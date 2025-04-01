@@ -139,7 +139,7 @@ stop_review:
     - |
       set -e
 
-      export PORTAINER_TOKEN=$(curl -X POST "https://https://portainer.cc25.chasacademy.dev/api/auth" \
+      export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
         --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
         | jq -r '.jwt')
 

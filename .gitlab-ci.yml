@@ -12,7 +12,6 @@ build:
     - if [[ $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH ]]; then DOCKER_TAG=latest; else DOCKER_TAG="$CI_COMMIT_REF_NAME"; fi
     - echo "Building $CI_REGISTRY_IMAGE:$DOCKER_TAG"
     - docker buildx build --cache-from=$CI_REGISTRY_IMAGE:latest -t $CI_REGISTRY_IMAGE:$DOCKER_TAG --push --target=base .
-    - echo "Building $CI_REGISTRY_IMAGE:-test-$DOCKER_TAG"
   rules:
     - if: $CI_MERGE_REQUEST_ID
       changes:
@@ -42,7 +41,6 @@ build-utils:
       changes:
         - Dockerfile-utils
 
-
 deploy:
   stage: deploy
   image: $CI_REGISTRY_IMAGE/utils:latest
@@ -59,23 +57,26 @@ deploy:
     - |
       set -e
 
+      # Set the environment variables correctly
       if [[ $CI_COMMIT_REF_NAME == "main" ]]; then 
         export NODE_ENV=production
+        export CI_ENVIRONMENT_SLUG="vibedrop-backend"
+        export NORMALIZED_STACK_NAME="vibedrop-backend"
       else
         export NODE_ENV=development
+        export CI_ENVIRONMENT_SLUG="vibedrop-backend-${CI_COMMIT_REF_NAME//[^a-zA-Z0-9]/-}"
+        export NORMALIZED_STACK_NAME=$(echo "$CI_ENVIRONMENT_SLUG" | tr -cd '[:alnum:]_-')
       fi
       echo "NODE_ENV set to $NODE_ENV"
+      echo "CI_ENVIRONMENT_SLUG set to $CI_ENVIRONMENT_SLUG"
+      echo "NORMALIZED_STACK_NAME set to $NORMALIZED_STACK_NAME"
       
       export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
         --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
         | jq -r '.jwt')
 
-      export STACK_NAME=$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME
-      export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr -cd '[:alnum:]_-')
-      export CI_ENVIRONMENT_SLUG=$CI_ENVIRONMENT_SLUG
-      echo "STACK: $STACK_NAME"
-      echo "NORMALIZED_STACK_NAME: $NORMALIZED_STACK_NAME"
-      echo "CI_ENVIRONMENT_SLUG: $CI_ENVIRONMENT_SLUG"
+      export STACK_NAME=$NORMALIZED_STACK_NAME
+      echo "STACK_NAME: $STACK_NAME"
       
       if [[ $CI_COMMIT_REF_NAME = $CI_DEFAULT_BRANCH ]]; then 
         DOCKER_TAG=latest
@@ -84,7 +85,6 @@ deploy:
       fi
       export DOCKER_TAG
 
-      echo "Filling in the template file with envvars..."
       envsubst < docker-compose.yml > deployable-compose.yml
       cat deployable-compose.yml
 
@@ -93,47 +93,27 @@ deploy:
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Id')
 
-      echo "Endpoint: $ENDPOINT_ID"
-
-      export SWARM_ID=$(curl -sSL \
-        -H "Authorization: Bearer $PORTAINER_TOKEN" \
-        https://portainer.cc25.chasacademy.dev/api/endpoints \
-        | jq -r '.[] | select(.Name == "primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
-
-      echo "Swarm: $SWARM_ID"
-
-      echo "Checking if stack $NORMALIZED_STACK_NAME is present..."
       STACK_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/stacks \
-        | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
-
-      echo "Stack id: \"$STACK_ID\""
+        | jq -r --arg NAME "$STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
 
       if [ -z "$STACK_ID" ]; then
-        echo "Creating stack $STACK_NAME"
         curl -X POST \
           "https://portainer.cc25.chasacademy.dev/api/stacks/create/swarm/file?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN" \
-          -F Name="$NORMALIZED_STACK_NAME" \
+          -F Name="$STACK_NAME" \
           -F SwarmID="$SWARM_ID" \
           -F file=@deployable-compose.yml \
           | jq
       else 
-        echo "Updating stack $STACK_ID ($STACK_NAME)"
-        COMPOSE_CONTENTS=$(cat deployable-compose.yml)
-
-        JSON_PAYLOAD=$(jq -n \
-          --arg compose "$COMPOSE_CONTENTS" \
-          '{"prune": true, "pullImage": true, "stackFileContent": $compose}')
-
         curl -X PUT \
           "https://portainer.cc25.chasacademy.dev/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN" \
-          --json "$JSON_PAYLOAD" \
+          --json "$(jq -n --arg compose "$(cat deployable-compose.yml)" \
+          '{"prune": true, "pullImage": true, "stackFileContent": $compose}')" \
           | jq
       fi
-
 
 stop_review:
   stage: teardown
@@ -152,40 +132,19 @@ stop_review:
         --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
         | jq -r '.jwt')
 
-      export STACK_NAME=$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME
-      echo "STACK: $STACK_NAME"
-
+      export STACK_NAME=$NORMALIZED_STACK_NAME
       export ENDPOINT_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Id')
 
-      echo "Endpoint: $ENDPOINT_ID"
-
-      export SWARM_ID=$(curl -sSL \
-        -H "Authorization: Bearer $PORTAINER_TOKEN" \
-        https://portainer.cc25.chasacademy.dev/api/endpoints \
-        | jq -r '.[] | select(.Name == "primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
-
-      echo "Swarm: $SWARM_ID"
-
-      NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr -cd '[:alnum:]_-')
-
-      echo "Checking if stack $NORMALIZED_STACK_NAME is present..."
       STACK_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/stacks \
-        | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
+        | jq -r --arg NAME "$STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
 
-      echo "Stack id: \"$STACK_ID\""
-
-      if [ -z "$STACK_ID" ]; then
-        echo "Stack $STACK_ID $STACK_NAME not found!"
-        exit 1
-      else 
-        echo "Deleting stack $STACK_ID ($STACK_NAME)"
+      if [ -n "$STACK_ID" ]; then
         curl -X DELETE \
           "https://portainer.cc25.chasacademy.dev/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN"
       fi
-

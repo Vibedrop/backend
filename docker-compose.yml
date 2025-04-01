@@ -5,7 +5,9 @@ services:
     networks:
       - traefik-public
     ports:
-      - "3000:3000" 
+      - "3000:3000"  # Ensure the container port is exposed
+    environment:
+      - NODE_ENV=production
     deploy:
       mode: replicated
       replicas: 1
@@ -13,14 +15,14 @@ services:
         - traefik.enable=true
         - traefik.docker.network=traefik-public
         - traefik.constraint-label=traefik-public
-        - traefik.http.routers.${NORMALIZED_STACK_NAME}-http.rule=Host(`${CI_ENVIRONMENT_SLUG}.cc25.chasacademy.dev`)
-        - traefik.http.routers.${NORMALIZED_STACK_NAME}-http.entrypoints=http
-        - traefik.http.routers.${NORMALIZED_STACK_NAME}-http.middlewares=https-redirect
-        - traefik.http.routers.${NORMALIZED_STACK_NAME}-https.rule=Host(`${CI_ENVIRONMENT_SLUG}.cc25.chasacademy.dev`)
-        - traefik.http.routers.${NORMALIZED_STACK_NAME}-https.entrypoints=https
-        - traefik.http.routers.${NORMALIZED_STACK_NAME}-https.tls=true
-        - traefik.http.routers.${NORMALIZED_STACK_NAME}-https.tls.certresolver=le
-        - traefik.http.services.${NORMALIZED_STACK_NAME}.loadbalancer.server.port=3000
+        - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-http.rule=Host(`${CI_ENVIRONMENT_SLUG}.cc25.chasacademy.dev`)
+        - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-http.entrypoints=http
+        - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-http.middlewares=https-redirect
+        - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-https.rule=Host(`${CI_ENVIRONMENT_SLUG}.cc25.chasacademy.dev`)
+        - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-https.entrypoints=https
+        - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-https.tls=true
+        - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-https.tls.certresolver=le
+        - traefik.http.services.${CI_ENVIRONMENT_SLUG}.loadbalancer.server.port=3000
 networks:
   traefik-public:
     external: true

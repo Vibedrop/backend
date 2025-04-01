@@ -3,7 +3,7 @@ stages:
   - deploy
   - teardown
 
-build-api:
+build:
   image: docker:20
   stage: build
   before_script:
@@ -45,7 +45,8 @@ build-utils:
 
 deploy:
   stage: deploy
-  image: $CI_REGISTRY_IMAGE/utils:latest
+  image: docker:20
+  #image: $CI_REGISTRY_IMAGE/utils:latest
   rules:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH

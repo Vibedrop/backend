@@ -13,7 +13,6 @@ build:
     - echo "Building $CI_REGISTRY_IMAGE:$DOCKER_TAG"
     - docker buildx build --cache-from=$CI_REGISTRY_IMAGE:latest -t $CI_REGISTRY_IMAGE:$DOCKER_TAG --push --target=base .
     - echo "Building $CI_REGISTRY_IMAGE:-test-$DOCKER_TAG"
-    - docker buildx build --cache-from=$CI_REGISTRY_IMAGE:latest -t $CI_REGISTRY_IMAGE:test-$DOCKER_TAG --push --target=test .
   rules:
     - if: $CI_MERGE_REQUEST_ID
       changes:
@@ -181,4 +180,4 @@ stop_review:
           "https://portainer.doe24.swarm.chasacademy.dev/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN"
       fi
-      
+

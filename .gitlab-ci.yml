@@ -51,7 +51,7 @@ deploy:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
   environment:
     name: review/$CI_COMMIT_REF_NAME
-    url: https://$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME.cc25.chasacademy.dev/
+    url: https://$CI_ENVIRONMENT_SLUG.cc25.chasacademy.dev/
     on_stop: stop_review
   script:
     - |

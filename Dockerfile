@@ -29,12 +29,9 @@ COPY package.json package-lock.json ./
 # Install only production dependencies
 RUN npm install --production
 
-# Set environment variables
-ENV PORT=3000
+# Copy the entrypoint script
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Expose the port that the app uses
-EXPOSE 3000
-
-# Run the compiled JavaScript file directly
-CMD ["node", "dist/index.js"]
-
+# Use the entrypoint script
+ENTRYPOINT ["sh", "/usr/local/bin/entrypoint.sh"]

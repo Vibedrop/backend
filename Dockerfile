@@ -36,4 +36,4 @@ ENV PORT=3000
 EXPOSE 3000
 
 # Run the compiled JavaScript file directly
-CMD ["sh", "-c", "node dist/index.js"]
+CMD ["sh", "-c", "if [ \"$NODE_ENV\" = \"development\" ]; then npm run dev; else node dist/index.js; fi"]

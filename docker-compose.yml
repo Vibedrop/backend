@@ -4,6 +4,8 @@ services:
     restart: always
     networks:
       - traefik-public
+    ports:
+      - "3000:3000" 
     deploy:
       mode: replicated
       replicas: 1

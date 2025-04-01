@@ -4,8 +4,6 @@ services:
     restart: always
     networks:
       - traefik-public
-    ports:
-      - "3000"  
     environment:
       - NODE_ENV=production
     deploy:

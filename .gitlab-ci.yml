@@ -142,3 +142,4 @@ stop_review:
         curl -X DELETE "https://portainer.cc25.chasacademy.dev/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN"
       fi
+      

@@ -1,6 +1,3 @@
-networks:
-  traefik-public:
-    external: true
 services:
   api:
     image: registry.chasacademy.dev/chas-challenge-2025/vibedrop/backend:${DOCKER_TAG}

@@ -35,3 +35,5 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Use the entrypoint script
 ENTRYPOINT ["sh", "/usr/local/bin/entrypoint.sh"]
+
+CMD ["node", "dist/index.js"]

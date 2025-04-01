@@ -29,14 +29,11 @@ COPY package.json package-lock.json ./
 # Install only production dependencies
 RUN npm install --production
 
-# Add the wrapper script to start the application
-COPY start.js ./
-
 # Set environment variables
 ENV PORT=3000
 
 # Expose the port that the app uses
 EXPOSE 3000
 
-# Run the application using the wrapper script
-CMD ["node", "start.js"]
+# Run the compiled JavaScript file directly
+CMD ["node", "dist/index.js"]

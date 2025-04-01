@@ -22,3 +22,4 @@ EXPOSE 3000
 
 # Use CMD so that you can override entrypoint if needed.
 CMD ["node", "dist/index.js"]
+ENTRYPOINT sh

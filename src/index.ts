@@ -12,8 +12,8 @@ app.post("/", async (req, res) => {
   const file = req.body.files;
   try {
     console.log(file);
-    const { nanoid } = await import("nanoid");
-    const id = nanoid();
+    // TODO: Replace wid nanoid
+    const id = Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
 
     const { data, error } = await supabase.storage.from("vibe").upload(id, file, {
       cacheControl: "3600",
@@ -34,5 +34,3 @@ app.get("/", async (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
-
-

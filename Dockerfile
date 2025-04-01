@@ -9,7 +9,6 @@ COPY package.json package-lock.json ./
 
 # Install dependencies
 RUN npm install
-RUN npm install -g http-server
 
 # Copy the rest of the application files
 COPY . .
@@ -37,4 +36,4 @@ ENV PORT=3000
 EXPOSE 3000
 
 # Run the compiled JavaScript file directly
-CMD ["sh", "-c", "node dist/index.js || http-server -p 3000"]
+CMD ["sh", "-c", "node dist/index.js || sleep infinity"]

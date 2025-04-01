@@ -105,7 +105,7 @@ deploy:
       if [ -z "$STACK_ID" ]; then
         echo "Creating stack $STACK_NAME"
         curl -X POST \
-          "https://portainer.cc25.chasacademy.dev.dev/api/stacks/create/swarm/file?endpointId=$ENDPOINT_ID" \
+          "https://portainer.cc25.chasacademy.dev/api/stacks/create/swarm/file?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN" \
           -F Name="$NORMALIZED_STACK_NAME" \
           -F SwarmID="$SWARM_ID" \

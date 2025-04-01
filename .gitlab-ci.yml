@@ -44,8 +44,8 @@ build-utils:
 
 deploy:
   stage: deploy
-  image: docker:20
-  #image: $CI_REGISTRY_IMAGE/utils:latest
+  #image: docker:20
+  image: $CI_REGISTRY_IMAGE/utils:latest
   rules:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH

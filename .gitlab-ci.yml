@@ -3,7 +3,7 @@ stages:
   - deploy
   - teardown
 
-build-api:
+build:
   image: docker:20
   stage: build
   before_script:

@@ -29,11 +29,6 @@ COPY package.json package-lock.json ./
 # Install only production dependencies
 RUN npm install --production
 
-# Copy the entrypoint script
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Use the entrypoint script
-ENTRYPOINT ["sh", "/usr/local/bin/entrypoint.sh"]
-
+# Just run Node
 CMD ["node", "dist/index.js"]

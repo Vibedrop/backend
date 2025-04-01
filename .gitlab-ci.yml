@@ -3,7 +3,7 @@ stages:
   - deploy
   - teardown
 
-build-api:
+build:
   image: docker:20
   stage: build
   before_script:
@@ -54,61 +54,86 @@ deploy:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
   environment:
     name: review/$CI_COMMIT_REF_NAME
-    url: https://$CI_ENVIRONMENT_SLUG.cc25.chasacademy.dev
+    url: https://$CI_ENVIRONMENT_SLUG.cc25.chasacademy.dev/docs
     on_stop: stop_review
   script:
     - |
       set -e
 
-      # Log into Portainer
+      # Log in to Portainer and retrieve a token
       export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
-        --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' | jq -r '.jwt')
+        --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
+        | jq -r '.jwt')
 
-      # Define stack and dynamic environment names
+      # Set the stack name and normalized stack name based on the branch name
       export STACK_NAME=$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME
       export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr -cd '[:alnum:]_-')
-      export CI_ENVIRONMENT_SLUG=$CI_ENVIRONMENT_SLUG
 
+      # Set the dynamic domain – for merge requests you might use a “review-” prefix
+      if [ -n "$CI_MERGE_REQUEST_ID" ]; then
+        export CI_ENVIRONMENT_SLUG="review-${CI_COMMIT_REF_NAME}"
+      else
+        export CI_ENVIRONMENT_SLUG="$CI_PROJECT_NAME"  # or another default for main branch
+      fi
+
+      echo "STACK: $STACK_NAME"
+      echo "NORMALIZED_STACK_NAME: $NORMALIZED_STACK_NAME"
+      echo "CI_ENVIRONMENT_SLUG: $CI_ENVIRONMENT_SLUG"
+
+      # Set the image tag – for MR builds use the branch name
       if [[ $CI_COMMIT_REF_NAME = $CI_DEFAULT_BRANCH ]]; then 
         DOCKER_TAG=latest
       else 
         DOCKER_TAG=$CI_COMMIT_REF_NAME
       fi
       export DOCKER_TAG
-      echo "STACK: $STACK_NAME"
-      echo "NORMALIZED_STACK_NAME: $NORMALIZED_STACK_NAME"
-      echo "CI_ENVIRONMENT_SLUG: $CI_ENVIRONMENT_SLUG"
       echo "DOCKER_TAG set to $DOCKER_TAG"
 
-      # Fill in docker-compose template with environment variables
+      # Substitute env vars in docker-compose file
       envsubst < docker-compose.yml > deployable-compose.yml
       cat deployable-compose.yml
 
-      # Get Portainer endpoint and swarm IDs dynamically
-      export ENDPOINT_ID=$(curl -sSL -H "Authorization: Bearer $PORTAINER_TOKEN" "https://portainer.cc25.chasacademy.dev/api/endpoints" | jq -r '.[] | select(.Name=="primary") | .Id')
+      # Retrieve the endpoint ID and swarm ID from Portainer
+      export ENDPOINT_ID=$(curl -sSL \
+        -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        https://portainer.cc25.chasacademy.dev/api/endpoints \
+        | jq -r '.[] | select(.Name == "primary") | .Id')
       echo "Endpoint: $ENDPOINT_ID"
-      export SWARM_ID=$(curl -sSL -H "Authorization: Bearer $PORTAINER_TOKEN" "https://portainer.cc25.chasacademy.dev/api/endpoints" | jq -r '.[] | select(.Name=="primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
+
+      export SWARM_ID=$(curl -sSL \
+        -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        https://portainer.cc25.chasacademy.dev/api/endpoints \
+        | jq -r '.[] | select(.Name == "primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
       echo "Swarm: $SWARM_ID"
 
       # Check if the stack exists
-      STACK_ID=$(curl -sSL -H "Authorization: Bearer $PORTAINER_TOKEN" "https://portainer.cc25.chasacademy.dev/api/stacks" | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name==$NAME) | .Id')
+      STACK_ID=$(curl -sSL \
+        -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        https://portainer.cc25.chasacademy.dev/api/stacks \
+        | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
       echo "Stack id: \"$STACK_ID\""
 
+      # Create or update the stack accordingly
       if [ -z "$STACK_ID" ]; then
         echo "Creating stack $STACK_NAME"
-        curl -X POST "https://portainer.cc25.chasacademy.dev/api/stacks/create/swarm/file?endpointId=$ENDPOINT_ID" \
+        curl -X POST \
+          "https://portainer.cc25.chasacademy.dev/api/stacks/create/swarm/file?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN" \
           -F Name="$NORMALIZED_STACK_NAME" \
           -F SwarmID="$SWARM_ID" \
-          -F file=@deployable-compose.yml | jq
+          -F file=@deployable-compose.yml \
+          | jq
       else 
         echo "Updating stack $STACK_ID ($STACK_NAME)"
         COMPOSE_CONTENTS=$(cat deployable-compose.yml)
         JSON_PAYLOAD=$(jq -n --arg compose "$COMPOSE_CONTENTS" '{"prune": true, "pullImage": true, "stackFileContent": $compose}')
-        curl -X PUT "https://portainer.cc25.chasacademy.dev/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
+        curl -X PUT \
+          "https://portainer.cc25.chasacademy.dev/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN" \
-          --json "$JSON_PAYLOAD" | jq
+          --json "$JSON_PAYLOAD" \
+          | jq
       fi
+
 
 stop_review:
   stage: teardown

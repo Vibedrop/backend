@@ -13,12 +13,8 @@ COPY --from=base /app/dist /app/dist
 COPY package.json package-lock.json ./
 RUN npm install --production
 
-# (Optional: if you need an entrypoint script, copy it here)
-# COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-# RUN chmod +x /usr/local/bin/entrypoint.sh
-
 ENV PORT=3000
 EXPOSE 3000
 
-# Use CMD so that you can override entrypoint if needed.
+# Use a simple CMD to run your app
 CMD ["node", "dist/index.js"]

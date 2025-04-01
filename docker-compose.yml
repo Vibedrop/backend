@@ -5,7 +5,7 @@ services:
     networks:
       - traefik-public
     ports:
-      - "3000:3000"  # Ensure the container port is exposed
+      - "3000"  
     environment:
       - NODE_ENV=production
     deploy:

@@ -29,11 +29,14 @@ COPY package.json package-lock.json ./
 # Install only production dependencies
 RUN npm install --production
 
+# Install PM2 to manage the Node process
+RUN npm install -g pm2
+
 # Set environment variables
 ENV PORT=3000
 
 # Expose the port that the app uses
 EXPOSE 3000
 
-# Run the compiled JavaScript file directly
-CMD ["sh", "-c", "node dist/index.js || sleep infinity"]
+# Run the application using PM2
+CMD ["pm2-runtime", "dist/index.js"]

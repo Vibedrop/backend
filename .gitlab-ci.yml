@@ -51,7 +51,7 @@ deploy:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
   environment:
     name: review/$CI_COMMIT_REF_NAME
-    url: https://$CI_ENVIRONMENT_SLUG.cc25.chasacademy.dev/
+    url: https://$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME.cc25.chasacademy.dev/
     on_stop: stop_review
   script:
     - |
@@ -74,6 +74,7 @@ deploy:
         DOCKER_TAG=$CI_COMMIT_REF_NAME
       fi
       export DOCKER_TAG
+      echo "DOCKER_TAG set to $DOCKER_TAG"
 
       echo "Filling in the template file with envvars..."
       envsubst < docker-compose.yml > deployable-compose.yml

@@ -11,10 +11,10 @@ services:
         - traefik.enable=true
         - traefik.docker.network=traefik-public
         - traefik.constraint-label=traefik-public
-        - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-http.rule=Host(`${CI_ENVIRONMENT_SLUG}.cc25.chasacademy.dev`)
+        - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-http.rule=Host(`${CI_ENVIRONMENT_SLUG}.doe24.swarm.chasacademy.dev`)
         - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-http.entrypoints=http
         - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-http.middlewares=https-redirect
-        - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-https.rule=Host(`${CI_ENVIRONMENT_SLUG}.cc25.chasacademy.dev`)
+        - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-https.rule=Host(`${CI_ENVIRONMENT_SLUG}.doe24.swarm.chasacademy.dev`)
         - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-https.entrypoints=https
         - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-https.tls=true
         - traefik.http.routers.${CI_ENVIRONMENT_SLUG}-https.tls.certresolver=le

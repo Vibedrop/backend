@@ -242,24 +242,47 @@ stop_review:
   script:
     - |
       set -e
+
       export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
         --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
         | jq -r '.jwt')
 
-      export STACK_NAME="$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
-      export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
+      export STACK_NAME=$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME
+      echo "STACK: $STACK_NAME"
 
+      export ENDPOINT_ID=$(curl -sSL \
+        -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        https://portainer.cc25.chasacademy.dev/api/endpoints \
+        | jq -r '.[] | select(.Name == "primary") | .Id')
+
+      echo "Endpoint: $ENDPOINT_ID"
+
+      NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
+
+      echo "Checking if stack $NORMALIZED_STACK_NAME is present..."
       STACK_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/stacks \
         | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
 
-      if [ -n "$STACK_ID" ]; then
-        echo "Removing stack: $STACK_ID"
-        curl -X DELETE \
+      echo "Stack id: \"$STACK_ID\""
+
+      if [ -z "$STACK_ID" ]
+      then
+        echo "Stack $STACK_ID $STACK_NAME not found!"
+        exit 1
+
+      else 
+        echo "Deleting stack $STACK_ID ($STACK_NAME)"
+        response=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
           "https://portainer.cc25.chasacademy.dev/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
-          -H "Authorization: Bearer $PORTAINER_TOKEN" \
-          | jq
-      else
-        echo "Stack not found for $NORMALIZED_STACK_NAME"
+          -H "Authorization: Bearer $PORTAINER_TOKEN")
+
+        if [ "$response" -eq 204 ]; then
+          echo "Stack $STACK_ID successfully deleted."
+        else
+          echo "Failed to delete stack $STACK_ID. HTTP status code: $response"
+          exit 1
+        fi
       fi
+

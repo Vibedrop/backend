@@ -6,6 +6,8 @@ RUN npm install
 COPY . .
 RUN npm run build
 
+CMD ["node", "dist/index.js"]
+
 # Stage 2: Run the application
 FROM node:18-alpine
 WORKDIR /app
@@ -16,5 +18,6 @@ RUN npm install --production
 ENV PORT=3000
 EXPOSE 3000
 
-# Use a simple CMD to run your app
+# Simple cmd to run app
 CMD ["node", "dist/index.js"]
+# Comment to trigger stuff

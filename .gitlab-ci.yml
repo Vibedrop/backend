@@ -4,7 +4,7 @@ stages:
   - teardown
 
 #############################################
-# 1) Bygg din vanliga backend-image
+# 1) Build usual backend-image
 #############################################
 build:
   image: docker:20
@@ -46,7 +46,7 @@ build:
         - src/**/*.ts
 
 #############################################
-# 2) Bygg "utils"-image
+# 2) Build "utils"-image
 #############################################
 build-utils:
   image: docker:20
@@ -69,13 +69,12 @@ build-utils:
 
 
 #############################################
-# 3) Deploy-jobb för Merge Requests (review)
+# 3) Deploy-job for Merge Requests (review)
 #############################################
 deploy_review:
   stage: deploy
   image: "$CI_REGISTRY_IMAGE/utils:latest"
   
-  # Undvik snedstreck, så GitLab inte lägger till slump-suffix
   environment:
     name: "review-$CI_COMMIT_REF_NAME"
     url: "https://review-$CI_COMMIT_REF_NAME.cc25.chasacademy.dev"
@@ -151,7 +150,7 @@ deploy_review:
       fi
 
 #############################################
-# 4) Deploy-jobb för main (production)
+# 4) Deploy-job for main (production)
 #############################################
 deploy_main:
   stage: deploy
@@ -229,13 +228,12 @@ deploy_main:
       fi
 
 #############################################
-# 5) Teardown-jobb för att stoppa review
+# 5) Teardown-job to stop review
 #############################################
 stop_review:
   stage: teardown
   image: "$CI_REGISTRY_IMAGE/utils:latest"
   environment:
-    # Samma environment-namn som i deploy_review
     name: "review-$CI_COMMIT_REF_NAME"
     action: stop
   rules:

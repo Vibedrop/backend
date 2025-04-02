@@ -60,28 +60,30 @@ deploy:
     - |
       set -e
 
-      # Log in to Portainer and retrieve a token
+      # Log in to Portainer and retrieve the token
       export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
         --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
         | jq -r '.jwt')
 
-      # Set the stack name and normalized stack name based on the branch name
-      export STACK_NAME=$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME
-      export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr -cd '[:alnum:]_-')
+      # Define the stack name from project variables
+      export STACK_NAME="$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
+      
+      # Normalize the stack name to lower-case and remove unwanted characters
+      export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
 
-      # Set the dynamic domain – for merge requests you might use a “review-” prefix
+      # Set a dynamic domain: if this is a merge request, prepend "review-"
       if [ -n "$CI_MERGE_REQUEST_ID" ]; then
-        export CI_ENVIRONMENT_SLUG="review-${CI_COMMIT_REF_NAME}"
+        export CI_ENVIRONMENT_SLUG="review-$(echo "$CI_COMMIT_REF_NAME" | tr '[:upper:]' '[:lower:]')"
       else
-        export CI_ENVIRONMENT_SLUG="$CI_PROJECT_NAME"  # or another default for main branch
+        export CI_ENVIRONMENT_SLUG="$CI_PROJECT_NAME"
       fi
 
       echo "STACK: $STACK_NAME"
       echo "NORMALIZED_STACK_NAME: $NORMALIZED_STACK_NAME"
       echo "CI_ENVIRONMENT_SLUG: $CI_ENVIRONMENT_SLUG"
 
-      # Set the image tag – for MR builds use the branch name
-      if [[ $CI_COMMIT_REF_NAME = $CI_DEFAULT_BRANCH ]]; then 
+      # Determine the image tag based on branch
+      if [ "$CI_COMMIT_REF_NAME" = "$CI_DEFAULT_BRANCH" ]; then 
         DOCKER_TAG=latest
       else 
         DOCKER_TAG=$CI_COMMIT_REF_NAME
@@ -89,11 +91,11 @@ deploy:
       export DOCKER_TAG
       echo "DOCKER_TAG set to $DOCKER_TAG"
 
-      # Substitute env vars in docker-compose file
+      # Substitute env vars in docker-compose.yml
       envsubst < docker-compose.yml > deployable-compose.yml
       cat deployable-compose.yml
 
-      # Retrieve the endpoint ID and swarm ID from Portainer
+      # Get the Portainer endpoint and swarm IDs
       export ENDPOINT_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
@@ -106,14 +108,14 @@ deploy:
         | jq -r '.[] | select(.Name == "primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
       echo "Swarm: $SWARM_ID"
 
-      # Check if the stack exists
+      # Look up if the stack already exists
       STACK_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/stacks \
         | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
       echo "Stack id: \"$STACK_ID\""
 
-      # Create or update the stack accordingly
+      # Create or update the stack
       if [ -z "$STACK_ID" ]; then
         echo "Creating stack $STACK_NAME"
         curl -X POST \
@@ -126,13 +128,15 @@ deploy:
       else 
         echo "Updating stack $STACK_ID ($STACK_NAME)"
         COMPOSE_CONTENTS=$(cat deployable-compose.yml)
-        JSON_PAYLOAD=$(jq -n --arg compose "$COMPOSE_CONTENTS" '{"prune": true, "pullImage": true, "stackFileContent": $compose}')
+        JSON_PAYLOAD=$(jq -n --arg compose "$COMPOSE_CONTENTS" \
+          '{"prune": true, "pullImage": true, "stackFileContent": $compose}')
         curl -X PUT \
           "https://portainer.cc25.chasacademy.dev/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN" \
           --json "$JSON_PAYLOAD" \
           | jq
       fi
+
 
 
 stop_review:
@@ -148,16 +152,26 @@ stop_review:
     - |
       set -e
       export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
-        --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' | jq -r '.jwt')
-      export STACK_NAME=$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME
+        --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
+        | jq -r '.jwt')
+      export STACK_NAME="$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
+      
+      # Normalize stack name to lower-case
+      export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
+      
       echo "STACK: $STACK_NAME"
-      export ENDPOINT_ID=$(curl -sSL -H "Authorization: Bearer $PORTAINER_TOKEN" "https://portainer.cc25.chasacademy.dev/api/endpoints" | jq -r '.[] | select(.Name=="primary") | .Id')
+      export ENDPOINT_ID=$(curl -sSL -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        "https://portainer.cc25.chasacademy.dev/api/endpoints" \
+        | jq -r '.[] | select(.Name=="primary") | .Id')
       echo "Endpoint: $ENDPOINT_ID"
-      export SWARM_ID=$(curl -sSL -H "Authorization: Bearer $PORTAINER_TOKEN" "https://portainer.cc25.chasacademy.dev/api/endpoints" | jq -r '.[] | select(.Name=="primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
+      export SWARM_ID=$(curl -sSL -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        "https://portainer.cc25.chasacademy.dev/api/endpoints" \
+        | jq -r '.[] | select(.Name=="primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
       echo "Swarm: $SWARM_ID"
-      NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr -cd '[:alnum:]_-')
       echo "Checking if stack $NORMALIZED_STACK_NAME is present..."
-      STACK_ID=$(curl -sSL -H "Authorization: Bearer $PORTAINER_TOKEN" "https://portainer.cc25.chasacademy.dev/api/stacks" | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name==$NAME) | .Id')
+      STACK_ID=$(curl -sSL -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        "https://portainer.cc25.chasacademy.dev/api/stacks" \
+        | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
       echo "Stack id: \"$STACK_ID\""
       if [ -z "$STACK_ID" ]; then
         echo "Stack $STACK_ID $STACK_NAME not found!"
@@ -167,4 +181,5 @@ stop_review:
         curl -X DELETE "https://portainer.cc25.chasacademy.dev/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN"
       fi
+
 

@@ -4,25 +4,31 @@ stages:
   - teardown
 
 #############################################
-# 1) Bygger din vanliga backend-image
+# 1) Bygg din vanliga backend-image
 #############################################
 build:
   image: docker:20
   stage: build
   before_script:
-    - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+    - docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
   script:
     - |
+      # Sätt DOCKER_TAG till "latest" om main, annars branch-namnet
       if [[ $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH ]]; then
-        DOCKER_TAG=latest
+        DOCKER_TAG="latest"
       else
         DOCKER_TAG="$CI_COMMIT_REF_NAME"
       fi
-    - echo "Building $CI_REGISTRY_IMAGE:$DOCKER_TAG"
-    - docker buildx build --cache-from=$CI_REGISTRY_IMAGE:latest \
-      -t $CI_REGISTRY_IMAGE:$DOCKER_TAG \
-      --push \
-      --target=base .
+
+      echo "Building $CI_REGISTRY_IMAGE:$DOCKER_TAG"
+
+      # Bygg base-steget och pusha
+      docker buildx build \
+        --cache-from="$CI_REGISTRY_IMAGE:latest" \
+        -t "$CI_REGISTRY_IMAGE:$DOCKER_TAG" \
+        --push \
+        --target=base \
+        .
   rules:
     - if: $CI_MERGE_REQUEST_ID
       changes:
@@ -40,19 +46,22 @@ build:
         - src/**/*.ts
 
 #############################################
-# 2) Bygger "utils"-image (oförändrat)
+# 2) Bygg "utils"-image
 #############################################
 build-utils:
   image: docker:20
   stage: build
   before_script:
-    - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+    - docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
   script:
-    - echo "Building $CI_REGISTRY_IMAGE/utils:latest"
-    - docker buildx build --cache-from=$CI_REGISTRY_IMAGE/utils:latest \
-      -t $CI_REGISTRY_IMAGE/utils:latest \
-      --push \
-      -f Dockerfile-utils .
+    - |
+      echo "Building $CI_REGISTRY_IMAGE/utils:latest"
+      docker buildx build \
+        --cache-from="$CI_REGISTRY_IMAGE/utils:latest" \
+        -t "$CI_REGISTRY_IMAGE/utils:latest" \
+        --push \
+        -f Dockerfile-utils \
+        .
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
       changes:
@@ -60,36 +69,36 @@ build-utils:
 
 
 #############################################
-# 3) Deploy-jobb för Merge Request (review)
+# 3) Deploy-jobb för Merge Requests (review)
 #############################################
 deploy_review:
   stage: deploy
-  image: $CI_REGISTRY_IMAGE/utils:latest
+  image: "$CI_REGISTRY_IMAGE/utils:latest"
   
-  # Här pekar vi på review-environment, med on_stop => stop_review
+  # Undvik snedstreck, så GitLab inte lägger till slump-suffix
   environment:
-    name: review/$CI_COMMIT_REF_NAME
-    url: https://$CI_ENVIRONMENT_SLUG.cc25.chasacademy.dev
+    name: "review-$CI_COMMIT_REF_NAME"
+    url: "https://review-$CI_COMMIT_REF_NAME.cc25.chasacademy.dev"
     on_stop: stop_review
 
-  # Denna regel kör enbart på MRs
   rules:
     - if: $CI_MERGE_REQUEST_ID
-  
+
   script:
     - |
       set -e
-
-      # 3.1) Logga in
+      # Logga in i Portainer
       export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
         --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
         | jq -r '.jwt')
 
-      # 3.2) Stack-namn + normalisering
+      # Bygg stack-namn med namespace, repo och gren
       export STACK_NAME="$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
+
+      # Normalisera (ta bort mellanslag, specialtecken etc.)
       export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
 
-      # 3.3) Sätt environment-slug + tag för MR
+      # Sätt environment slug & Docker-tag
       export CI_ENVIRONMENT_SLUG="review-$(echo "$CI_COMMIT_REF_NAME" | tr '[:upper:]' '[:lower:]')"
       export DOCKER_TAG="$CI_COMMIT_REF_NAME"
 
@@ -98,33 +107,30 @@ deploy_review:
       echo "CI_ENVIRONMENT_SLUG: $CI_ENVIRONMENT_SLUG"
       echo "DOCKER_TAG: $DOCKER_TAG"
 
-      # 3.4) Generera docker-compose.yml
+      # Generera docker-compose med envsubst
       envsubst < docker-compose.yml > deployable-compose.yml
       cat deployable-compose.yml
 
-      # 3.5) Endpoint & swarm ID
+      # Hämta endpoint och swarm ID
       export ENDPOINT_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Id')
-      echo "Endpoint: $ENDPOINT_ID"
 
       export SWARM_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
-      echo "Swarm: $SWARM_ID"
 
-      # 3.6) Kolla om stack redan finns
+      # Kolla om stack redan finns
       STACK_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/stacks \
         | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
-      echo "Stack id: \"$STACK_ID\""
 
-      # 3.7) Skapa/uppdatera stack
+      # Skapa eller uppdatera stack
       if [ -z "$STACK_ID" ]; then
-        echo "Creating stack $STACK_NAME"
+        echo "Creating stack $NORMALIZED_STACK_NAME"
         curl -X POST \
           "https://portainer.cc25.chasacademy.dev/api/stacks/create/swarm/file?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN" \
@@ -133,7 +139,7 @@ deploy_review:
           -F file=@deployable-compose.yml \
           | jq
       else
-        echo "Updating stack $STACK_ID ($STACK_NAME)"
+        echo "Updating stack $STACK_ID ($NORMALIZED_STACK_NAME)"
         COMPOSE_CONTENTS=$(cat deployable-compose.yml)
         JSON_PAYLOAD=$(jq -n --arg compose "$COMPOSE_CONTENTS" \
           '{"prune": true, "pullImage": true, "stackFileContent": $compose}')
@@ -149,31 +155,28 @@ deploy_review:
 #############################################
 deploy_main:
   stage: deploy
-  image: $CI_REGISTRY_IMAGE/utils:latest
+  image: "$CI_REGISTRY_IMAGE/utils:latest"
 
-  # Här pekar vi på en "production"-miljö
   environment:
-    name: production
-    url: https://vibedrop-backend.cc25.chasacademy.dev
+    name: "production"
+    url: "https://vibedrop-backend.cc25.chasacademy.dev"
 
-  # Denna regel kör enbart på main-branch
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-  
+
   script:
     - |
       set -e
-
       # Logga in i Portainer
       export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
         --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
         | jq -r '.jwt')
 
-      # Stack-namn + normalisering
+      # Bygg stack-namn
       export STACK_NAME="$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
       export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
 
-      # Här hårdkodar vi "vibedrop-backend" och "latest" för production
+      # För main => hårdkoda domain + Docker-tag
       export CI_ENVIRONMENT_SLUG="vibedrop-backend"
       export DOCKER_TAG="latest"
 
@@ -182,33 +185,30 @@ deploy_main:
       echo "CI_ENVIRONMENT_SLUG: $CI_ENVIRONMENT_SLUG"
       echo "DOCKER_TAG: $DOCKER_TAG"
 
-      # Generera docker-compose.yml
+      # Generera docker-compose
       envsubst < docker-compose.yml > deployable-compose.yml
       cat deployable-compose.yml
 
-      # Endpoint & swarm ID
+      # Hämta endpoint & swarm
       export ENDPOINT_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Id')
-      echo "Endpoint: $ENDPOINT_ID"
 
       export SWARM_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
-      echo "Swarm: $SWARM_ID"
 
       # Kolla om stack redan finns
       STACK_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/stacks \
         | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
-      echo "Stack id: \"$STACK_ID\""
 
-      # Skapa eller uppdatera stack
+      # Skapa eller uppdatera
       if [ -z "$STACK_ID" ]; then
-        echo "Creating stack $STACK_NAME"
+        echo "Creating stack $NORMALIZED_STACK_NAME"
         curl -X POST \
           "https://portainer.cc25.chasacademy.dev/api/stacks/create/swarm/file?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN" \
@@ -217,7 +217,7 @@ deploy_main:
           -F file=@deployable-compose.yml \
           | jq
       else
-        echo "Updating stack $STACK_ID ($STACK_NAME)"
+        echo "Updating stack $STACK_ID ($NORMALIZED_STACK_NAME)"
         COMPOSE_CONTENTS=$(cat deployable-compose.yml)
         JSON_PAYLOAD=$(jq -n --arg compose "$COMPOSE_CONTENTS" \
           '{"prune": true, "pullImage": true, "stackFileContent": $compose}')
@@ -233,9 +233,10 @@ deploy_main:
 #############################################
 stop_review:
   stage: teardown
-  image: $CI_REGISTRY_IMAGE/utils:latest
+  image: "$CI_REGISTRY_IMAGE/utils:latest"
   environment:
-    name: review/$CI_COMMIT_REF_NAME
+    # Samma environment-namn som i deploy_review
+    name: "review-$CI_COMMIT_REF_NAME"
     action: stop
   rules:
     - if: $CI_MERGE_REQUEST_ID
@@ -246,9 +247,8 @@ stop_review:
       export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
         --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
         | jq -r '.jwt')
+
       export STACK_NAME="$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
-      
-      # Normalize stack name to lower-case
       export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
 
       STACK_ID=$(curl -sSL \

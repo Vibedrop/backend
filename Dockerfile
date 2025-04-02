@@ -6,6 +6,8 @@ RUN npm install
 COPY . .
 RUN npm run build
 
+CMD ["node", "dist/index.js"]
+
 # Stage 2: Run the application
 FROM node:18-alpine
 WORKDIR /app

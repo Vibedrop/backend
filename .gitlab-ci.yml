@@ -53,8 +53,8 @@ deploy:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
   environment:
-    name: $CI_COMMIT_REF_NAME
-    url: https://$CI_ENVIRONMENT_SLUG.cc25.chasacademy.dev
+    name: review/$CI_COMMIT_REF_NAME
+    url: https://$CI_ENVIRONMENT_SLUG.cc25.chasacademy.dev/docs
     on_stop: stop_review
   script:
     - |
@@ -71,9 +71,9 @@ deploy:
       # Normalize the stack name to lower-case and remove unwanted characters
       export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
 
-      # Set a dynamic domain: if this is a merge request"
+      # Set a dynamic domain: if this is a merge request, prepend "review-"
       if [ -n "$CI_MERGE_REQUEST_ID" ]; then
-        export CI_ENVIRONMENT_SLUG="$(echo "$CI_COMMIT_REF_NAME" | tr '[:upper:]' '[:lower:]')"
+        export CI_ENVIRONMENT_SLUG="review-$(echo "$CI_COMMIT_REF_NAME" | tr '[:upper:]' '[:lower:]')"
       else
         export CI_ENVIRONMENT_SLUG="$CI_PROJECT_NAME"
       fi
@@ -143,7 +143,7 @@ stop_review:
   stage: teardown
   image: $CI_REGISTRY_IMAGE/utils:latest
   environment:
-    name: $CI_COMMIT_REF_NAME
+    name: review/$CI_COMMIT_REF_NAME
     action: stop
   rules:
     - if: $CI_MERGE_REQUEST_ID

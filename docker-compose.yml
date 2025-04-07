@@ -4,6 +4,11 @@ services:
     restart: always
     networks:
       - traefik-public
+    environment:
+      - NODE_ENV=production
+      # Postgres db
+      - DATABASE_URL=postgres://postgres:postgres@vibedrop-infra-db:5432/vibedrop
+      # S3-läggs nedan när det funkar på Portainer
     deploy:
       mode: replicated
       replicas: 1
@@ -19,6 +24,7 @@ services:
         - traefik.http.routers.${NORMALIZED_STACK_NAME}-https.tls=true
         - traefik.http.routers.${NORMALIZED_STACK_NAME}-https.tls.certresolver=le
         - traefik.http.services.${NORMALIZED_STACK_NAME}.loadbalancer.server.port=3000
+
 networks:
   traefik-public:
     external: true

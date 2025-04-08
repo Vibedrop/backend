@@ -5,10 +5,8 @@ services:
     networks:
       - traefik-public
     environment:
-      - NODE_ENV=production
-      # Postgres db
-      - DATABASE_URL=postgres://postgres:postgres@vibedrop-infra-db:5432/vibedrop
-      # S3-läggs nedan när det funkar på Portainer
+    - NODE_ENV=production
+    - DATABASE_URL=${DATABASE_URL}
     deploy:
       mode: replicated
       replicas: 1

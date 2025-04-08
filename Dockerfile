@@ -20,4 +20,3 @@ EXPOSE 3000
 
 # Simple cmd to run app
 CMD ["node", "dist/index.js"]
-# Comment to trigger stuff

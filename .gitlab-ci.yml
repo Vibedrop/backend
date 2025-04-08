@@ -37,6 +37,7 @@ build:
         - package-lock.json
         - tsconfig.json
         - src/**/*.ts
+        - docker-compose.yml
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
       changes:
         - Dockerfile
@@ -44,6 +45,7 @@ build:
         - package-lock.json
         - tsconfig.json
         - src/**/*.ts
+        - docker-compose.yml
 
 #############################################
 # 2) Build "utils"-image

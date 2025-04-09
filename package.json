@@ -7,7 +7,7 @@
     "type": "commonjs",
     "main": "index.js",
     "scripts": {
-        "build": "npx prisma migrate deploy && tsc",
+        "build": "tsc",
         "start": "node dist/index.js",
         "dev": "nodemon"
     },

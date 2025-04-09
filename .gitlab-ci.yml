@@ -4,7 +4,7 @@ stages:
   - teardown
 
 #############################################
-# 1) Build usual backend-image
+# 1) Bygg backend-imagen
 #############################################
 build:
   image: docker:20
@@ -13,21 +13,20 @@ build:
     - docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
   script:
     - |
-      # Sätt DOCKER_TAG till "latest" om main, annars branch-namnet
+      # Sätt DOCKER_TAG till "latest" om main, annars använd branch-namnet
       if [[ $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH ]]; then
         DOCKER_TAG="latest"
       else
         DOCKER_TAG="$CI_COMMIT_REF_NAME"
       fi
 
-      echo "Building $CI_REGISTRY_IMAGE:$DOCKER_TAG"
+      echo "Bygger $CI_REGISTRY_IMAGE:$DOCKER_TAG"
 
-      # Bygg base-steget och pusha
+      # Bygg hela Docker-imagen (inte bara base-steget) och pusha till registret
       docker buildx build \
         --cache-from="$CI_REGISTRY_IMAGE:latest" \
         -t "$CI_REGISTRY_IMAGE:$DOCKER_TAG" \
         --push \
-        --target=base \
         .
   rules:
     - if: $CI_MERGE_REQUEST_ID
@@ -48,7 +47,7 @@ build:
         - docker-compose.yml
 
 #############################################
-# 2) Build "utils"-image
+# 2) Bygg "utils"-imagen
 #############################################
 build-utils:
   image: docker:20
@@ -57,7 +56,7 @@ build-utils:
     - docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
   script:
     - |
-      echo "Building $CI_REGISTRY_IMAGE/utils:latest"
+      echo "Bygger $CI_REGISTRY_IMAGE/utils:latest"
       docker buildx build \
         --cache-from="$CI_REGISTRY_IMAGE/utils:latest" \
         -t "$CI_REGISTRY_IMAGE/utils:latest" \
@@ -69,9 +68,8 @@ build-utils:
       changes:
         - Dockerfile-utils
 
-
 #############################################
-# 3) Deploy-job for Merge Requests (review)
+# 3) Deploy-job för Merge Requests (review)
 #############################################
 deploy_review:
   stage: deploy
@@ -95,11 +93,7 @@ deploy_review:
 
       # Bygg stack-namn med namespace, repo och gren
       export STACK_NAME="$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
-
-      # Normalisera (ta bort mellanslag, specialtecken etc.)
       export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
-
-      # Sätt environment slug & Docker-tag
       export CI_ENVIRONMENT_SLUG="review-$(echo "$CI_COMMIT_REF_NAME" | tr '[:upper:]' '[:lower:]')"
       export DOCKER_TAG="$CI_COMMIT_REF_NAME"
 
@@ -131,7 +125,7 @@ deploy_review:
 
       # Skapa eller uppdatera stack
       if [ -z "$STACK_ID" ]; then
-        echo "Creating stack $NORMALIZED_STACK_NAME"
+        echo "Skapar stack $NORMALIZED_STACK_NAME"
         curl -X POST \
           "https://portainer.cc25.chasacademy.dev/api/stacks/create/swarm/file?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN" \
@@ -140,7 +134,7 @@ deploy_review:
           -F file=@deployable-compose.yml \
           | jq
       else
-        echo "Updating stack $STACK_ID ($NORMALIZED_STACK_NAME)"
+        echo "Uppdaterar stack $STACK_ID ($NORMALIZED_STACK_NAME)"
         COMPOSE_CONTENTS=$(cat deployable-compose.yml)
         JSON_PAYLOAD=$(jq -n --arg compose "$COMPOSE_CONTENTS" \
           '{"prune": true, "pullImage": true, "stackFileContent": $compose}')
@@ -152,7 +146,7 @@ deploy_review:
       fi
 
 #############################################
-# 4) Deploy-job for main (production)
+# 4) Deploy-job för main (production)
 #############################################
 deploy_main:
   stage: deploy
@@ -209,7 +203,7 @@ deploy_main:
 
       # Skapa eller uppdatera
       if [ -z "$STACK_ID" ]; then
-        echo "Creating stack $NORMALIZED_STACK_NAME"
+        echo "Skapar stack $NORMALIZED_STACK_NAME"
         curl -X POST \
           "https://portainer.cc25.chasacademy.dev/api/stacks/create/swarm/file?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN" \
@@ -218,7 +212,7 @@ deploy_main:
           -F file=@deployable-compose.yml \
           | jq
       else
-        echo "Updating stack $STACK_ID ($NORMALIZED_STACK_NAME)"
+        echo "Uppdaterar stack $STACK_ID ($NORMALIZED_STACK_NAME)"
         COMPOSE_CONTENTS=$(cat deployable-compose.yml)
         JSON_PAYLOAD=$(jq -n --arg compose "$COMPOSE_CONTENTS" \
           '{"prune": true, "pullImage": true, "stackFileContent": $compose}')
@@ -230,7 +224,7 @@ deploy_main:
       fi
 
 #############################################
-# 5) Teardown-job to stop review
+# 5) Teardown-job för att stoppa review
 #############################################
 stop_review:
   stage: teardown
@@ -261,7 +255,7 @@ stop_review:
 
       NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
 
-      echo "Checking if stack $NORMALIZED_STACK_NAME is present..."
+      echo "Kollar om stack $NORMALIZED_STACK_NAME finns..."
       STACK_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/stacks \
@@ -271,20 +265,19 @@ stop_review:
 
       if [ -z "$STACK_ID" ]
       then
-        echo "Stack $STACK_ID $STACK_NAME not found!"
+        echo "Stack $STACK_ID $STACK_NAME hittades inte!"
         exit 1
 
       else 
-        echo "Deleting stack $STACK_ID ($STACK_NAME)"
+        echo "Tar bort stack $STACK_ID ($STACK_NAME)"
         response=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
           "https://portainer.cc25.chasacademy.dev/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN")
 
         if [ "$response" -eq 204 ]; then
-          echo "Stack $STACK_ID successfully deleted."
+          echo "Stack $STACK_ID raderades framgångsrikt."
         else
-          echo "Failed to delete stack $STACK_ID. HTTP status code: $response"
+          echo "Misslyckades med att ta bort stack $STACK_ID. HTTP-statuskod: $response"
           exit 1
         fi
       fi
-

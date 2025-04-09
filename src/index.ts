@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import userRouter from "./routes/userRoutes";
 import authRouter from "./routes/authRoutes";
+import { stat } from "fs";
 
 const app = express();
 const port = 3000;
@@ -10,7 +11,13 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/users", userRouter);
-app.use("/auth", authRouter);
+//app.use("/auth", authRouter);
+
+app.get("/", (req, res) => {
+    res.sendStatus(200).json({
+        status: "OK",
+    });
+});
 
 const server = app.listen(port, error => {
     if (error) {
@@ -19,4 +26,3 @@ const server = app.listen(port, error => {
 
     console.log(`Server is running on ${JSON.stringify(server.address())}`);
 });
-

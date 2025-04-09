@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
     provider = "postgresql"
-    url      = "postgres://postgres:GBg8Iet8Ymf6UVjT0KR1iW3pmsF+Rg2n@vibedrop-infra-db:5432/vibedrop"
+    url      = env("DATABASE_URL")
 }
 
 model User {

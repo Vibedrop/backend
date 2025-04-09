@@ -1,22 +1,34 @@
-# Stage 1: Build the application
-FROM node:18-alpine AS base
+# === Stage 1: Bygg applikationen ===
+FROM node:18-alpine AS builder
 WORKDIR /app
+
+# Kopiera package-filer och installera beroenden
 COPY package.json package-lock.json ./
 RUN npm install
+
+# Kopiera hela källkoden
 COPY . .
+
+# Bygg applikationen (endast kompilation, ej migrering)
 RUN npm run build
 
-CMD ["node", "dist/index.js"]
-
-# Stage 2: Run the application
+# === Stage 2: Skapa produktionsimage ===
 FROM node:18-alpine
 WORKDIR /app
-COPY --from=base /app/dist /app/dist
-COPY package.json package-lock.json ./
-RUN npm install --production
 
+# Kopiera den kompilerade koden och node_modules från byggsteget
+COPY --from=builder /app/dist /app/dist
+COPY --from=builder /app/node_modules /app/node_modules
+COPY --from=builder /app/prisma /app/prisma
+COPY package.json package-lock.json ./
+
+# Kopiera entrypoint-scriptet och gör det exekverbart
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Ställ in nödvändiga miljövariabler och port
 ENV PORT=3000
 EXPOSE 3000
 
-# Simple cmd to run app
-CMD ["node", "dist/index.js"]
+# Använd entrypoint-scriptet för att först köra migreringar och sedan starta appen
+CMD ["/app/entrypoint.sh"]

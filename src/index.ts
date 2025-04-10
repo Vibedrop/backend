@@ -14,7 +14,7 @@ app.use("/users", userRouter);
 //app.use("/auth", authRouter);
 
 app.get("/", (req, res) => {
-    res.sendStatus(200).json({
+    res.status(200).json({
         status: "OK",
     });
 });

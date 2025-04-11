@@ -103,6 +103,7 @@ test_smoke:
 
 
       sleep 5
+      docker exec "${CONTAINER_NAME}" printenv
       export HOST_PORT=$(docker port "${CONTAINER_NAME}" 3000 | cut -d: -f2)
       echo "Backend kör på hostport: ${HOST_PORT}"
       

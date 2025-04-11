@@ -2,33 +2,32 @@
 FROM node:18-alpine AS builder
 WORKDIR /app
 
-# Kopiera package-filer och installera beroenden
+# Kopiera package-filer och installera
 COPY package.json package-lock.json ./
 RUN npm install
 
-# Kopiera hela källkoden
+# Kopiera all källkod
 COPY . .
 
-# Bygg applikationen (endast kompilation, ej migrering)
+# 1) Bygg TypeScript
 RUN npm run build
+
+# 2) Generera Prisma-klienten
+RUN npx prisma generate
 
 # === Stage 2: Skapa produktionsimage ===
 FROM node:18-alpine
 WORKDIR /app
 
-# Kopiera den kompilerade koden och node_modules från byggsteget
 COPY --from=builder /app/dist /app/dist
 COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/prisma /app/prisma
 COPY package.json package-lock.json ./
 
-# Kopiera entrypoint-scriptet och gör det exekverbart
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Ställ in nödvändiga miljövariabler och port
 ENV PORT=3000
 EXPOSE 3000
 
-# Använd entrypoint-scriptet för att först köra migreringar och sedan starta appen
 CMD ["/app/entrypoint.sh"]

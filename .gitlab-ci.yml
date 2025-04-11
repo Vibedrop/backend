@@ -87,20 +87,25 @@ test_smoke:
       fi
   script:
     - apk add --no-cache curl
+    # Sätt ett unikt container-namn baserat på CI_JOB_ID
+    - export CONTAINER_NAME="backend-test-${CI_JOB_ID}"
+    # Försök ta bort eventuell container med samma namn (lokalt, om den finns)
+    - docker rm -f "${CONTAINER_NAME}" || true
     # Dra ner den nyss byggda imagen
     - docker pull "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
-    # Starta containern i bakgrunden, mappa port 3000
-    - docker run -d --name backend-test -p 3000:3000 "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
-    # Vänta 5 sekunder så att applikationen hinner starta
+    # Starta containern med det unika namnet
+    - docker run -d --name "${CONTAINER_NAME}" -p 3000:3000 "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
+    # Vänta på att applikationen ska starta
     - sleep 5
-    # Testa att appen svarar på /health och att vi får HTTP 200
+    # Testa att appen svarar på /health, vilket bör ge HTTP 200
     - curl -f http://localhost:3000/health
     - echo "Smoke test passed! Backend svarar på hälsokoll."
-    # Stoppa och ta bort containern
-    - docker rm -f backend-test
+    # Städa upp: ta bort containern med det unika namnet
+    - docker rm -f "${CONTAINER_NAME}"
   rules:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+
 
 
 #############################################

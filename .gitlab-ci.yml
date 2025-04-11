@@ -1,5 +1,6 @@
 stages:
   - build
+  - test      # Ny stage för tester
   - deploy
   - teardown
 
@@ -19,9 +20,7 @@ build:
       else
         DOCKER_TAG="$CI_COMMIT_REF_NAME"
       fi
-
       echo "Bygger $CI_REGISTRY_IMAGE:$DOCKER_TAG"
-
       # Bygg hela Docker-imagen (inte bara base-steget) och pusha till registret
       docker buildx build \
         --cache-from="$CI_REGISTRY_IMAGE:latest" \
@@ -69,20 +68,51 @@ build-utils:
         - Dockerfile-utils
 
 #############################################
-# 3) Deploy-job för Merge Requests (review)
+# 3) Smoke-test-job (för att stoppa deploy vid fel)
+#############################################
+test_smoke:
+  stage: test
+  image: docker:20
+  services:
+    - docker:20-dind
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
+    - |
+      if [[ $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH ]]; then
+        DOCKER_TAG="latest"
+      else
+        DOCKER_TAG="$CI_COMMIT_REF_NAME"
+      fi
+  script:
+    # Dra ner den nyss byggda imagen
+    - docker pull "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
+    # Starta containern i bakgrunden, mappar port 3000
+    - docker run -d --name backend-test -p 3000:3000 "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
+    # Vänta 5 sekunder så att applikationen hinner starta
+    - sleep 5
+    # Testa att appen svarar på /health och att vi får HTTP 200
+    - curl -f http://localhost:3000/health
+    - echo "Smoke test passed! Backend svarar på hälsokoll."
+    # Stoppa och ta bort containern
+    - docker rm -f backend-test
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+
+#############################################
+# 4) Deploy-job för Merge Requests (review)
 #############################################
 deploy_review:
   stage: deploy
   image: "$CI_REGISTRY_IMAGE/utils:latest"
-  
   environment:
     name: "review-$CI_COMMIT_REF_NAME"
     url: "https://review-$CI_COMMIT_REF_NAME.cc25.chasacademy.dev"
     on_stop: stop_review
-
   rules:
     - if: $CI_MERGE_REQUEST_ID
-
   script:
     - |
       set -e
@@ -90,39 +120,32 @@ deploy_review:
       export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
         --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
         | jq -r '.jwt')
-
       # Bygg stack-namn med namespace, repo och gren
       export STACK_NAME="$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
       export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
       export CI_ENVIRONMENT_SLUG="review-$(echo "$CI_COMMIT_REF_NAME" | tr '[:upper:]' '[:lower:]')"
       export DOCKER_TAG="$CI_COMMIT_REF_NAME"
-
       echo "STACK: $STACK_NAME"
       echo "NORMALIZED_STACK_NAME: $NORMALIZED_STACK_NAME"
       echo "CI_ENVIRONMENT_SLUG: $CI_ENVIRONMENT_SLUG"
       echo "DOCKER_TAG: $DOCKER_TAG"
-
       # Generera docker-compose med envsubst
       envsubst < docker-compose.yml > deployable-compose.yml
       cat deployable-compose.yml
-
       # Hämta endpoint och swarm ID
       export ENDPOINT_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Id')
-
       export SWARM_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
-
       # Kolla om stack redan finns
       STACK_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/stacks \
         | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
-
       # Skapa eller uppdatera stack
       if [ -z "$STACK_ID" ]; then
         echo "Skapar stack $NORMALIZED_STACK_NAME"
@@ -146,19 +169,16 @@ deploy_review:
       fi
 
 #############################################
-# 4) Deploy-job för main (production)
+# 5) Deploy-job för main (production)
 #############################################
 deploy_main:
   stage: deploy
   image: "$CI_REGISTRY_IMAGE/utils:latest"
-
   environment:
     name: "production"
     url: "https://vibedrop-backend.cc25.chasacademy.dev"
-
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-
   script:
     - |
       set -e
@@ -166,41 +186,33 @@ deploy_main:
       export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
         --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
         | jq -r '.jwt')
-
       # Bygg stack-namn
       export STACK_NAME="$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
       export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
-
       # För main => hårdkoda domain + Docker-tag
       export CI_ENVIRONMENT_SLUG="vibedrop-backend"
       export DOCKER_TAG="latest"
-
       echo "STACK: $STACK_NAME"
       echo "NORMALIZED_STACK_NAME: $NORMALIZED_STACK_NAME"
       echo "CI_ENVIRONMENT_SLUG: $CI_ENVIRONMENT_SLUG"
       echo "DOCKER_TAG: $DOCKER_TAG"
-
       # Generera docker-compose
       envsubst < docker-compose.yml > deployable-compose.yml
       cat deployable-compose.yml
-
       # Hämta endpoint & swarm
       export ENDPOINT_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Id')
-
       export SWARM_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
-
       # Kolla om stack redan finns
       STACK_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/stacks \
         | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
-
       # Skapa eller uppdatera
       if [ -z "$STACK_ID" ]; then
         echo "Skapar stack $NORMALIZED_STACK_NAME"
@@ -224,7 +236,7 @@ deploy_main:
       fi
 
 #############################################
-# 5) Teardown-job för att stoppa review
+# 6) Teardown-job för att stoppa review
 #############################################
 stop_review:
   stage: teardown
@@ -238,42 +250,32 @@ stop_review:
   script:
     - |
       set -e
-
       export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
         --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
         | jq -r '.jwt')
-
       export STACK_NAME=$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME
       echo "STACK: $STACK_NAME"
-
       export ENDPOINT_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Id')
-
       echo "Endpoint: $ENDPOINT_ID"
-
       NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
-
       echo "Kollar om stack $NORMALIZED_STACK_NAME finns..."
       STACK_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/stacks \
         | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
-
       echo "Stack id: \"$STACK_ID\""
-
       if [ -z "$STACK_ID" ]
       then
         echo "Stack $STACK_ID $STACK_NAME hittades inte!"
         exit 1
-
       else 
         echo "Tar bort stack $STACK_ID ($STACK_NAME)"
         response=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
           "https://portainer.cc25.chasacademy.dev/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN")
-
         if [ "$response" -eq 204 ]; then
           echo "Stack $STACK_ID raderades framgångsrikt."
         else

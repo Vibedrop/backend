@@ -1,6 +1,6 @@
 stages:
   - build
-  #- test      # Ny stage för tester
+  - test
   - deploy
   - teardown
 
@@ -67,6 +67,50 @@ build-utils:
       changes:
         - Dockerfile-utils
 
+#############################################
+# 3) Smoke-test-job (för att stoppa deploy vid fel)
+#############################################
+test:
+  stage: test
+  image: docker:20
+  services:
+    - docker:20-dind
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
+    - |
+      if [[ $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH ]]; then
+        DOCKER_TAG="latest"
+      else
+        DOCKER_TAG="$CI_COMMIT_REF_NAME"
+      fi
+  script:
+    - |
+      apk add --no-cache curl
+      export CONTAINER_NAME="backend-test-${CI_JOB_ID}"
+      docker rm -f "${CONTAINER_NAME}" || true
+      docker pull "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
+      docker run -d --name "${CONTAINER_NAME}" -P \
+        -e NODE_ENV=production \
+        -e DATABASE_URL="$DATABASE_URL" \
+        -e S3_BUCKET_NAME="vibedrop" \
+        -e S3_REGION="us-east-1" \
+        -e S3_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID" \
+        -e S3_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY" \
+        -e S3_ENDPOINT="http://vibedrop-localstack:4566" \
+        "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
+
+      sleep 15
+      export IS_RUNNING=$(docker inspect --format '{{.State.Running}}' "${CONTAINER_NAME}")
+      echo "Container Running: ${IS_RUNNING}"
+      if [ "${IS_RUNNING}" != "true" ]; then docker logs "${CONTAINER_NAME}"; exit 1; fi
+      echo "Test passed! Container is running."
+      docker rm -f "${CONTAINER_NAME}"
+
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
 
 
 #############################################

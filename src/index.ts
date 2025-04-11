@@ -7,6 +7,15 @@ import { prisma } from "./utilities/prisma";
 const app = express();
 const port = 3000;
 
+// Fånga errors för felsökning i Portainer
+process.on("uncaughtException", (err) => {
+    console.error("Uncaught exception:", err);
+  });
+  
+  process.on("unhandledRejection", (reason, promise) => {
+    console.error("Unhandled rejection at:", promise, "reason:", reason);
+  });
+
 // Middleware
 app.use(cors());
 app.use(express.json());

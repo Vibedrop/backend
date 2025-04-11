@@ -89,22 +89,26 @@ test_smoke:
     - apk add --no-cache curl
     # Sätt ett unikt container-namn baserat på CI_JOB_ID
     - export CONTAINER_NAME="backend-test-${CI_JOB_ID}"
-    # Försök ta bort eventuell container med samma namn (lokalt, om den finns)
+    # Ta bort eventuell gammal container med samma namn
     - docker rm -f "${CONTAINER_NAME}" || true
     # Dra ner den nyss byggda imagen
     - docker pull "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
-    # Starta containern med det unika namnet
-    - docker run -d --name "${CONTAINER_NAME}" -p 3000:3000 "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
-    # Vänta på att applikationen ska starta
+    # Starta containern med dynamisk portmappning (-P låter Docker välja en ledig hostport)
+    - docker run -d --name "${CONTAINER_NAME}" -P "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
+    # Vänta några sekunder så att applikationen hinner starta
     - sleep 5
-    # Testa att appen svarar på /health, vilket bör ge HTTP 200
-    - curl -f http://localhost:3000/health
+    # Hämta hostporten som containerport 3000 mappats till, ex:
+    - export HOST_PORT=$(docker port "${CONTAINER_NAME}" 3000 | cut -d: -f2)
+    - echo "Backend kör på hostport: ${HOST_PORT}"
+    # Testa att applikationen svarar på /health via den dynamiska hostporten
+    - curl -f http://localhost:${HOST_PORT}/health
     - echo "Smoke test passed! Backend svarar på hälsokoll."
-    # Städa upp: ta bort containern med det unika namnet
+    # Stoppa och rensa upp containern
     - docker rm -f "${CONTAINER_NAME}"
   rules:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+
 
 
 

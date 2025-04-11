@@ -105,7 +105,7 @@ test:
       export IS_RUNNING=$(docker inspect --format '{{.State.Running}}' "${CONTAINER_NAME}")
       echo "Container Running: ${IS_RUNNING}"
       if [ "${IS_RUNNING}" != "true" ]; then docker logs "${CONTAINER_NAME}"; exit 1; fi
-      echo "Smoke test passed! Container is running."
+      echo "Test passed! Container is running."
       docker rm -f "${CONTAINER_NAME}"
 
   rules:

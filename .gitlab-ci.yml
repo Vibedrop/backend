@@ -70,7 +70,7 @@ build-utils:
 #############################################
 # 3) Smoke-test-job (för att stoppa deploy vid fel)
 #############################################
-test_smoke:
+test:
   stage: test
   image: docker:20
   services:

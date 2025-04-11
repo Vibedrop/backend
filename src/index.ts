@@ -44,5 +44,5 @@ const server = app.listen(port, error => {
         console.log(Error);
     }
 
-    console.log(Server is running on ${JSON.stringify(server.address())});
+    console.log(`Server is running on ${JSON.stringify(server.address())}`);
 });

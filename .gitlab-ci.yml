@@ -86,9 +86,10 @@ test_smoke:
         DOCKER_TAG="$CI_COMMIT_REF_NAME"
       fi
   script:
+    - apk add --no-cache curl
     # Dra ner den nyss byggda imagen
     - docker pull "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
-    # Starta containern i bakgrunden, mappar port 3000
+    # Starta containern i bakgrunden, mappa port 3000
     - docker run -d --name backend-test -p 3000:3000 "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
     # Vänta 5 sekunder så att applikationen hinner starta
     - sleep 5
@@ -100,6 +101,7 @@ test_smoke:
   rules:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+
 
 #############################################
 # 4) Deploy-job för Merge Requests (review)

@@ -39,6 +39,12 @@ app.get("/health", (req, res) => {
     });
 });
 
+
+app.get("/", (req, res) => {
+    res.status(200).json({ status: "OK", message: "Hejsan Hoppsan" });
+  });
+  
+
 const server = app.listen(port, error => {
     if (error) {
         console.log(Error);

@@ -91,7 +91,7 @@ test_smoke:
       export CONTAINER_NAME="backend-test-${CI_JOB_ID}"
       docker rm -f "${CONTAINER_NAME}" || true
       docker pull "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
-      docker run -d --name "${CONTAINER_NAME}" -P \
+      docker run -d --name "${CONTAINER_NAME}" -P --network traefik-public \
         -e NODE_ENV=production \
         -e DATABASE_URL="$DATABASE_URL" \
         -e S3_BUCKET_NAME="vibedrop" \
@@ -100,6 +100,7 @@ test_smoke:
         -e S3_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY" \
         -e S3_ENDPOINT="http://vibedrop-localstack:4566" \
         "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
+
 
 
       sleep 5

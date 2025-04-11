@@ -92,7 +92,8 @@ test_smoke:
       docker rm -f "${CONTAINER_NAME}" || true
       docker pull "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
       docker run -d --name "${CONTAINER_NAME}" -P "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
-      sleep 5
+      sleep 15
+      docker ps -a
       export HOST_PORT=$(docker port "${CONTAINER_NAME}" 3000 | cut -d: -f2)
       echo "Backend kör på hostport: ${HOST_PORT}"
       curl -f http://localhost:${HOST_PORT}/health

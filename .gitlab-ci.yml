@@ -87,15 +87,15 @@ test_smoke:
       fi
   script:
       |
-    - apk add --no-cache curl
-    - export CONTAINER_NAME="backend-test-${CI_JOB_ID}"
-    - docker rm -f "${CONTAINER_NAME}" || true
-    - docker pull "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
-    - docker run -d --name "${CONTAINER_NAME}" -P "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
-    - sleep 5
-    - export HOST_PORT=$(docker port "${CONTAINER_NAME}" 3000 | cut -d: -f2)
-    - echo "Backend kör på hostport: ${HOST_PORT}"
-    - |
+      apk add --no-cache curl
+      export CONTAINER_NAME="backend-test-${CI_JOB_ID}"
+      docker rm -f "${CONTAINER_NAME}" || true
+      docker pull "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
+      docker run -d --name "${CONTAINER_NAME}" -P "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
+      sleep 5
+      export HOST_PORT=$(docker port "${CONTAINER_NAME}" 3000 | cut -d: -f2)
+      echo "Backend kör på hostport: ${HOST_PORT}"
+      
       timeout=30
       until curl -f http://localhost:${HOST_PORT}/health; do
         echo "Waiting for backend to be ready..."
@@ -107,8 +107,8 @@ test_smoke:
           exit 1
         fi
       done
-    - echo "Smoke test passed! Backend svarar på hälsokoll."
-    - docker rm -f "${CONTAINER_NAME}"
+      echo "Smoke test passed! Backend svarar på hälsokoll."
+      docker rm -f "${CONTAINER_NAME}"
 
   rules:
     - if: $CI_MERGE_REQUEST_ID

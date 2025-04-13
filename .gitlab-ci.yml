@@ -36,6 +36,7 @@ build:
         - tsconfig.json
         - src/**/*.ts
         - docker-compose.yml
+        - .gitlab-ci.yml
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
       changes:
         - Dockerfile
@@ -44,6 +45,7 @@ build:
         - tsconfig.json
         - src/**/*.ts
         - docker-compose.yml
+        - .gitlab-ci.yml
 
 #############################################
 # 2) Bygg "utils"-imagen

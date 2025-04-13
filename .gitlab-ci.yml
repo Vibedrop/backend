@@ -135,6 +135,10 @@ deploy_review:
       # Bygg stack-namn med namespace, repo och gren
       export STACK_NAME="$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
       export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
+      if [ ${#NORMALIZED_STACK_NAME} -gt 63 ]; then
+        echo "Error: Stack name '$NORMALIZED_STACK_NAME' exceeds 63 characters."
+        exit 1
+      fi
       export CI_ENVIRONMENT_SLUG="review-$(echo "$CI_COMMIT_REF_NAME" | tr '[:upper:]' '[:lower:]')"
       export DOCKER_TAG="$CI_COMMIT_REF_NAME"
       echo "STACK: $STACK_NAME"

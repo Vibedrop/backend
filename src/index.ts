@@ -11,7 +11,8 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/users", userRouter);
-//app.use("/auth", authRouter);
+
+app.use("/auth", authRouter);
 
 app.get("/prisma", async (req, res) => {
     const users = await prisma.user.findMany();
@@ -39,11 +40,9 @@ app.get("/health", (req, res) => {
     });
 });
 
-
 app.get("/", (req, res) => {
     res.status(200).json({ status: "OK", message: "Hejsan Hoppsan" });
-  });
-  
+});
 
 const server = app.listen(port, error => {
     if (error) {

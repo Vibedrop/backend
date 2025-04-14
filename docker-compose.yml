@@ -35,4 +35,4 @@ networks:
     traefik-public:
         external: true
     internal-only:
-    external: true
+        external: true

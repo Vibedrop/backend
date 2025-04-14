@@ -21,6 +21,7 @@ build:
         DOCKER_TAG="$CI_COMMIT_REF_NAME"
       fi
       echo "Bygger $CI_REGISTRY_IMAGE:$DOCKER_TAG"
+      
       # Bygg hela Docker-imagen (inte bara base-steget) och pusha till registret
       docker buildx build \
         --cache-from="$CI_REGISTRY_IMAGE:latest" \
@@ -70,7 +71,7 @@ build-utils:
         - Dockerfile-utils
 
 #############################################
-# 3) Smoke-test-job (för att stoppa deploy vid fel)
+# 3) Test-job (för att stoppa deploy vid fel)
 #############################################
 test:
   stage: test
@@ -134,22 +135,30 @@ deploy_review:
       export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
         --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
         | jq -r '.jwt')
+
       # Bygg stack-namn med namespace, repo och gren
       export STACK_NAME="$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
+      
+      # Normalisera Stack_name för Portainer
       export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
+
+      # Förhindra att stack-name är längre än 63chars
       if [ ${#NORMALIZED_STACK_NAME} -gt 63 ]; then
         echo "Error: Stack name '$NORMALIZED_STACK_NAME' exceeds 63 characters."
         exit 1
       fi
+
       export CI_ENVIRONMENT_SLUG="review-$(echo "$CI_COMMIT_REF_NAME" | tr '[:upper:]' '[:lower:]')"
       export DOCKER_TAG="$CI_COMMIT_REF_NAME"
       echo "STACK: $STACK_NAME"
       echo "NORMALIZED_STACK_NAME: $NORMALIZED_STACK_NAME"
       echo "CI_ENVIRONMENT_SLUG: $CI_ENVIRONMENT_SLUG"
       echo "DOCKER_TAG: $DOCKER_TAG"
+
       # Generera docker-compose med envsubst
       envsubst < docker-compose.yml > deployable-compose.yml
       cat deployable-compose.yml
+
       # Hämta endpoint och swarm ID
       export ENDPOINT_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
@@ -159,11 +168,13 @@ deploy_review:
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
+
       # Kolla om stack redan finns
       STACK_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/stacks \
         | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
+
       # Skapa eller uppdatera stack
       if [ -z "$STACK_ID" ]; then
         echo "Skapar stack $NORMALIZED_STACK_NAME"
@@ -204,9 +215,11 @@ deploy_main:
       export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
         --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
         | jq -r '.jwt')
+
       # Bygg stack-namn
       export STACK_NAME="$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
       export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
+
       # För main => hårdkoda domain + Docker-tag
       export CI_ENVIRONMENT_SLUG="vibedrop-backend"
       export DOCKER_TAG="latest"
@@ -214,9 +227,11 @@ deploy_main:
       echo "NORMALIZED_STACK_NAME: $NORMALIZED_STACK_NAME"
       echo "CI_ENVIRONMENT_SLUG: $CI_ENVIRONMENT_SLUG"
       echo "DOCKER_TAG: $DOCKER_TAG"
+
       # Generera docker-compose
       envsubst < docker-compose.yml > deployable-compose.yml
       cat deployable-compose.yml
+
       # Hämta endpoint & swarm
       export ENDPOINT_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
@@ -226,11 +241,13 @@ deploy_main:
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
+
       # Kolla om stack redan finns
       STACK_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/stacks \
         | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
+
       # Skapa eller uppdatera
       if [ -z "$STACK_ID" ]; then
         echo "Skapar stack $NORMALIZED_STACK_NAME"

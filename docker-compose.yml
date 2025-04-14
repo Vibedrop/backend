@@ -26,6 +26,8 @@ services:
             - traefik.http.routers.${NORMALIZED_STACK_NAME}-https.entrypoints=https
             - traefik.http.routers.${NORMALIZED_STACK_NAME}-https.tls=true
             - traefik.http.routers.${NORMALIZED_STACK_NAME}-https.tls.certresolver=le
+            - traefik.http.routers.${NORMALIZED_STACK_NAME}.tls.domains[0].main=cc25.chasacademy.dev
+            - traefik.http.routers.${NORMALIZED_STACK_NAME}.tls.domains[0].sans=*.cc25.chasacademy.dev            
             - traefik.http.services.${NORMALIZED_STACK_NAME}.loadbalancer.server.port=3000
 
 networks:

@@ -44,6 +44,7 @@ export async function signUp(req: Request, res: Response) {
         .object({
             email: z.string().email(),
             password: z.string(),
+            username: z.string()
         })
         .safeParse(req.body);
 
@@ -54,13 +55,14 @@ export async function signUp(req: Request, res: Response) {
         return;
     }
 
-    const { email, password } = signUpBody.data;
+    const { email, password, username } = signUpBody.data;
 
     try {
         const user = await prisma.user.create({
             data: {
                 email: email,
                 password: password,
+                username: username,
             },
         });
         res.status(201).json({ message: "User created successfully" });

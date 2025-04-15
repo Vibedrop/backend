@@ -280,8 +280,15 @@ stop_review:
     name: "review-$CI_COMMIT_REF_NAME"
     action: stop
   rules:
+    # Kör manuellt via GitLab UI
     - if: $CI_MERGE_REQUEST_ID
       when: manual
+
+    # Kör automatiskt när MR stängs eller mergas
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_STATE == "merged"'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_STATE == "closed"'
+      when: always
   script:
     - |
       set -e

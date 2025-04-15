@@ -29,6 +29,7 @@ app.post("/prisma", async (req, res) => {
         data: {
             email: randomEmail,
             password: randomPassword,
+            username: randomEmail,
         },
     });
     res.status(201).json(user);

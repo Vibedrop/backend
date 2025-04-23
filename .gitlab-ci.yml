@@ -110,6 +110,10 @@ test:
       if [ "${IS_RUNNING}" != "true" ]; then docker logs "${CONTAINER_NAME}"; exit 1; fi
       echo "Test passed! Container is running."
       docker rm -f "${CONTAINER_NAME}"
+  rules:
+  - if: $CI_MERGE_REQUEST_ID
+  - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+  - when: always
 
 
 

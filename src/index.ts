@@ -5,6 +5,8 @@ import cors from "cors";
 import userRouter from "./routes/userRoutes";
 import authRouter from "./routes/authRoutes";
 import testRouter from "./routes/testRoutes";
+import testUploadRoute from "./routes/testUploadRoute";
+
 
 const PORT = 3000;
 const app = express();
@@ -36,6 +38,10 @@ app.use("/test", testRouter);
 app.get("/", (req, res) => {
     res.status(200).json({ status: "OK", message: "Hejsan Hoppsan" });
 });
+
+app.use("/verify", testUploadRoute);
+
+
 
 // Handle 404
 const server = app.listen(PORT, error => {

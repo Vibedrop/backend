@@ -11,27 +11,30 @@ const passwordSchema = z.string()
 // Schemas for different routes
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email('Invalid email format'),
-  password: passwordSchema
+  password: z.string().min(1, 'Password is required')
 })
 
 const registerSchema = z.object({
   email: z.string().trim().toLowerCase().email('Invalid email format'),
   password: passwordSchema,
   username: z.string()
+    .trim()
     .min(1, 'Username is required')
     .max(20, 'Username must be at most 20 characters long')
     .regex(/^[a-zA-Z0-9_]+(?: [a-zA-Z0-9_]+)*$/, 'Username can contain letters, numbers, and underscores, with single spaces allowed between words')
 })
 
 const userUpdateSchema = z.object({
-  oldPassword: passwordSchema,
-  newPassword: passwordSchema
+  oldPassword: passwordSchema.optional(),
+  newPassword: passwordSchema.optional()
+}).refine(data => !!data.oldPassword === !!data.newPassword, {
+  message: 'Both old and new password must be provided together',
 })
 
 // Middleware handler creator
 const createValidationMiddleware = (schema: z.ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const result = schema.safeParse(req.body)
+    const result = schema.safeParse(req.body) as z.SafeParseReturnType<unknown, any>
 
     if (!result.success) {
       const errors = result.error.flatten().fieldErrors

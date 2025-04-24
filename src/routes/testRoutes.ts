@@ -71,7 +71,7 @@ router.get("/s3", async (req, res) => {
             });
 
             const url = await getSignedUrl(s3, objectCommand, {
-                expiresIn: 30,
+                expiresIn: 60 * 10, // 10 minutes
             });
 
             console.log("testRoutes GET data.contents", data.Contents);

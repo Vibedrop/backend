@@ -16,6 +16,8 @@ export async function signUp(req: Request, res: Response) {
         })
         .safeParse(req.body);
 
+    console.log("signUpBody", req.body);
+
     if (!signUpBody.success) {
         res.status(400).json({
             message: "Bad request",
@@ -25,10 +27,16 @@ export async function signUp(req: Request, res: Response) {
 
     try {
         const { email, password, username } = signUpBody.data;
-        const userExists = await prisma.user.findUnique({ where: { email }});
+        const userEmailExists = await prisma.user.findUnique({ where: { email }});
+        const userUsernameExists = await prisma.user.findUnique({ where: { username }});
 
-        if (userExists) {
-            res.status(409).json({ message: "User already exists."});
+        if (userEmailExists) {
+            res.status(409).json({ message: "An account with that email adress already exists."});
+            return;
+        }
+
+        if (userUsernameExists) {
+            res.status(409).json({ message: "A user with that username already exists."});
             return;
         }
 
@@ -37,7 +45,7 @@ export async function signUp(req: Request, res: Response) {
         // Saved hashed PW to DB
         const user = await prisma.user.create({ data: { email, password: hashedPassword, username, }});
 
-        res.status(201).json({ message: "User created successfully.", user: user.email });
+        res.status(201).json({ message: "User created successfully.", user: user.username });
         return;
 
     } catch (err) {

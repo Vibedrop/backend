@@ -11,8 +11,9 @@ const PORT = 3000;
 const app = express();
 const corsOptions = {
     origin: process.env.NODE_ENV === 'production'
-        ? process.env.FRONTEND_URL // Production URL
-        : 'http://localhost:3001', // Development URL (NextJS port)
+        // TODO: Change to production URL to env variable FRONTEND_URL
+        ? 'https://vibedrop-frontend.cc25.chasacademy.dev' // Production frontend URL,
+        : 'http://localhost:3001', // Development frontend URL (NextJS port)
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true, // Required for Cookies

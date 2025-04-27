@@ -91,9 +91,8 @@ test:
   script:
     - |
       apk add --no-cache curl
-      export CONTAINER_NAME="backend-test-${CI_JOB_ID}"
-
       echo "Rensar ev. gammal container..."
+      export CONTAINER_NAME="backend-test-${CI_JOB_ID}"
       docker rm -f "${CONTAINER_NAME}" || true
 
       echo "Pullar rätt backend-image..."
@@ -110,29 +109,35 @@ test:
         -e S3_ENDPOINT="$S3_ENDPOINT" \
         "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
 
-      sleep 15
-
       echo "Kollar om containern körs..."
       export IS_RUNNING=$(docker inspect --format '{{.State.Running}}' "${CONTAINER_NAME}")
       echo "Container Running: ${IS_RUNNING}"
-      if [ "${IS_RUNNING}" != "true" ]; then
-        docker logs "${CONTAINER_NAME}"
-        exit 1
-      fi
+      if [ "${IS_RUNNING}" != "true" ]; then docker logs "${CONTAINER_NAME}"; exit 1; fi
 
       echo "Tar reda på vilken port som mappats..."
-      export MAPPED_PORT=$(docker port "${CONTAINER_NAME}" 3000 | cut -d':' -f2)
+      export MAPPED_PORT=$(docker inspect --format='{{(index (index .NetworkSettings.Ports "3000/tcp") 0).HostPort}}' "${CONTAINER_NAME}")
       echo "Backend svarar på port ${MAPPED_PORT}"
 
-      echo "Testar /test/prisma endpointen..."
-      curl --fail "http://localhost:${MAPPED_PORT}/test/prisma"
+      echo "Väntar på att backend ska bli redo..."
+      for i in {1..30}; do
+        if curl -s "http://localhost:${MAPPED_PORT}/test/prisma" >/dev/null; then
+          echo "Backend är uppe!"
+          break
+        fi
+        echo "Backend inte uppe än, väntar 1 sekund..."
+        sleep 1
+      done
 
-      echo "Testen klar – stänger containern."
+      echo "Testar /test/prisma endpointen på riktigt..."
+      curl -f "http://localhost:${MAPPED_PORT}/test/prisma"
+
+      echo "Stänger ner containern..."
       docker rm -f "${CONTAINER_NAME}"
   rules:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
     - when: always
+
 
 
 

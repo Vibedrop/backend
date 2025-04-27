@@ -73,6 +73,7 @@ build-utils:
 #############################################
 # 3) Test-job (för att stoppa deploy vid fel)
 #############################################
+             
 test:
   stage: test
   image: docker:20
@@ -91,9 +92,15 @@ test:
   script:
     - |
       apk add --no-cache curl
+
+      # Döda gammal container om den finns
       export CONTAINER_NAME="backend-test-${CI_JOB_ID}"
       docker rm -f "${CONTAINER_NAME}" || true
+
+      # Pulla rätt backend-image
       docker pull "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
+
+      # Starta backend-containern
       docker run -d --name "${CONTAINER_NAME}" -P \
         -e NODE_ENV=production \
         -e DATABASE_URL="$DATABASE_URL" \
@@ -104,16 +111,30 @@ test:
         -e S3_ENDPOINT="$S3_ENDPOINT" \
         "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
 
-      sleep 15
+      # Vänta lite för säkerhets skull
+      sleep 10
+
+      # Kolla att containern är running
       export IS_RUNNING=$(docker inspect --format '{{.State.Running}}' "${CONTAINER_NAME}")
       echo "Container Running: ${IS_RUNNING}"
-      if [ "${IS_RUNNING}" != "true" ]; then docker logs "${CONTAINER_NAME}"; exit 1; fi
-      echo "Test passed! Container is running."
+
+      if [ "${IS_RUNNING}" != "true" ]; then
+        echo "Backend container startade inte korrekt."
+        docker logs "${CONTAINER_NAME}"
+        exit 1
+      fi
+
+      echo "Test OK! Backend-container startades korrekt."
+
+      # Städa bort containern
       docker rm -f "${CONTAINER_NAME}"
   rules:
-  - if: $CI_MERGE_REQUEST_ID
-  - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-  - when: always
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - when: always
+
+
+
 
 
 

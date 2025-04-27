@@ -105,15 +105,30 @@ test:
         "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
 
       sleep 15
+
       export IS_RUNNING=$(docker inspect --format '{{.State.Running}}' "${CONTAINER_NAME}")
       echo "Container Running: ${IS_RUNNING}"
       if [ "${IS_RUNNING}" != "true" ]; then docker logs "${CONTAINER_NAME}"; exit 1; fi
-      echo "Test passed! Container is running."
+
+      # Här börjar snabbchecken på /test/prisma
+      sleep 10
+      echo "Testar /test/prisma endpointen..."
+      HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$(docker port "${CONTAINER_NAME}" 3000 | cut -d: -f2)/test/prisma)
+      if [ "$HTTP_STATUS" != "200" ]; then
+        echo "Test på /test/prisma misslyckades! HTTP status: $HTTP_STATUS"
+        docker logs "${CONTAINER_NAME}"
+        exit 1
+      else
+        echo "Test på /test/prisma lyckades!"
+      fi
+
+      echo "Test passed! Container is healthy."
       docker rm -f "${CONTAINER_NAME}"
   rules:
-  - if: $CI_MERGE_REQUEST_ID
-  - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-  - when: always
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - when: always
+
 
 
 

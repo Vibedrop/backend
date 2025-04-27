@@ -1,11 +1,23 @@
 #!/bin/sh
 
-# Detta entrypoint-script kör först Prisma-migreringar för att uppdatera databasen
-# och startar sedan applikationen. Säkerställer DATABSE_URL env och att migreringen sker
-# endast en gång i körmiljön.
+# Vänta tills databasen är redo
+echo "Väntar på databas..."
+until nc -z -v -w30 vibedrop-infra-db 5432
+do
+  echo "Databasen inte redo än - väntar 5 sekunder..."
+  sleep 5
+done
 
+echo "Databasen är redo!"
+
+# Kör databas-migreringar
 echo "Kör databas-migreringar..."
-npm run migrate   # Kör migreringsscriptet definierat i package.json
+npm run migrate
 
+# Generera Prisma-klienten
+echo "Genererar Prisma-klient..."
+npx prisma generate
+
+# Starta applikationen
 echo "Startar applikationen..."
-exec npm start   # 'exec' ersätter processen med appen, vilket är bra för signalhantering
+exec npm start

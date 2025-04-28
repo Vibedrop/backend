@@ -1,9 +1,9 @@
-import { Request, Response } from "express";
-import { createJWT } from "../utilities/createJWT";
-import { prisma } from "../utilities/prisma";
+import type { Request, Response } from "express";
+import { createJWT } from "../utilities/createJWT.js";
+import { prisma } from "../utilities/prisma.js";
 import bcrypt from "bcryptjs";
 import z from "zod";
-import { clearAuthCookie, setAuthCookie } from "../utilities/cookies";
+import { clearAuthCookie, setAuthCookie } from "../utilities/cookies.js";
 
 const SALT_ROUNDS = 10;
 
@@ -12,7 +12,7 @@ export async function signUp(req: Request, res: Response) {
         .object({
             email: z.string().email(),
             password: z.string(),
-            username: z.string()
+            username: z.string(),
         })
         .safeParse(req.body);
 
@@ -27,27 +27,39 @@ export async function signUp(req: Request, res: Response) {
 
     try {
         const { email, password, username } = signUpBody.data;
-        const userEmailExists = await prisma.user.findUnique({ where: { email }});
-        const userUsernameExists = await prisma.user.findUnique({ where: { username }});
+        const userEmailExists = await prisma.user.findUnique({
+            where: { email },
+        });
+        const userUsernameExists = await prisma.user.findUnique({
+            where: { username },
+        });
 
         if (userEmailExists) {
-            res.status(409).json({ message: "An account with that email adress already exists."});
+            res.status(409).json({
+                message: "An account with that email adress already exists.",
+            });
             return;
         }
 
         if (userUsernameExists) {
-            res.status(409).json({ message: "A user with that username already exists."});
+            res.status(409).json({
+                message: "A user with that username already exists.",
+            });
             return;
         }
 
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
         // Saved hashed PW to DB
-        const user = await prisma.user.create({ data: { email, password: hashedPassword, username, }});
+        const user = await prisma.user.create({
+            data: { email, password: hashedPassword, username },
+        });
 
-        res.status(201).json({ message: "User created successfully.", user: user.username });
+        res.status(201).json({
+            message: "User created successfully.",
+            user: user.username,
+        });
         return;
-
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Error creating user." });
@@ -73,16 +85,16 @@ export async function signIn(req: Request, res: Response) {
     try {
         // Find user in DB by email (@unique)
         const { email, password } = signInBody.data;
-        const user = await prisma.user.findUnique({ where: { email }});
+        const user = await prisma.user.findUnique({ where: { email } });
 
         // If user not in DB
-        if(!user) {
-            res.status(404).json({ message: "User not found."});
+        if (!user) {
+            res.status(404).json({ message: "User not found." });
             return;
         }
 
         // If passwords match
-        const isPasswordValid = await bcrypt.compare( password, user.password );
+        const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {
             res.status(401).json({ message: "Invalid credentials." });
@@ -97,7 +109,6 @@ export async function signIn(req: Request, res: Response) {
 
         res.status(200).json({ message: "Logged in successfully." });
         return;
-
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Error logging in." });

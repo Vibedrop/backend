@@ -1,8 +1,8 @@
-import { NextFunction, Request, Response } from "express";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import type { NextFunction, Request, Response } from "express";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 
 export interface ProtectedRequest extends Request {
-    user?: JwtPayload
+    user?: JwtPayload;
 }
 
 // TODO: Move JWT_SECRET to a .env file
@@ -32,10 +32,11 @@ export async function authMiddleware(
         req.user = decoded;
         // console.log("Req user: ", req.user);
         next();
-
-    } catch (err) {
+    } catch {
         // console.log(err);
-        res.status(401).json({ message: "Unauthorized request. Invalid token." });
+        res.status(401).json({
+            message: "Unauthorized request. Invalid token.",
+        });
         return;
     }
 }

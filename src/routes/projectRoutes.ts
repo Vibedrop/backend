@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { uploadFile } from "../controllers/projectController";
+import { uploadFile } from "../controllers/projectController.js";
 import multer, { memoryStorage } from "multer";
-import { authMiddleware } from "../middleware/authMiddleware";
+// import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const router = Router();
 

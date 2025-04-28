@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { prisma } from "../utilities/prisma";
+import { prisma } from "../utilities/prisma.js";
 import { GetObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
-import { s3 } from "../utilities/s3";
+import { s3 } from "../utilities/s3.js";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import multer from "multer";
 import multerS3 from "multer-s3";
@@ -112,10 +112,12 @@ router.post("/s3", upload.single("file"), async (req, res) => {
     const file = req.file;
     console.log("req.file testRoutes", file);
 
-    file
-        ? res.status(200).json(file)
-        : res.status(400).json({ error: "No file uploaded" });
+    if (!file) {
+        res.status(400).json({ error: "No file uploaded" });
+        return;
+    }
 
+    res.status(200).json(file);
     return;
 });
 

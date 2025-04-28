@@ -1,7 +1,6 @@
-import { Request, Response } from "express";
-import { buffer } from "stream/consumers";
+import type { Request, Response } from "express";
 import { z } from "zod";
-import { prisma } from "../utilities/prisma";
+import { prisma } from "../utilities/prisma.js";
 import { nanoid } from "nanoid";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -92,7 +91,7 @@ export async function uploadFile(req: RequestWithAuth, res: Response) {
 
     // Create a db record for the audio file
     try {
-        const newFileRecord = await prisma.audioFile.create({
+        await prisma.audioFile.create({
             data: {
                 name: parsedBody.data.fileName,
                 s3Key: key,

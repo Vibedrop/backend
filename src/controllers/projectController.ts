@@ -100,6 +100,7 @@ export async function uploadFile(req: ProtectedRequest, res: Response) {
     });
 }
 
+// Skapa nytt projekt
 export async function createProject(req: ProtectedRequest, res: Response) {
     // Validate user
     const parsedUser = z
@@ -140,9 +141,7 @@ export async function createProject(req: ProtectedRequest, res: Response) {
             },
         });
 
-        res.status(201).json({
-            projectId: project.id,
-        });
+        res.status(201).json(project);
     } catch (e) {
         console.log(e);
         res.status(500).json({
@@ -150,3 +149,34 @@ export async function createProject(req: ProtectedRequest, res: Response) {
         });
     }
 }
+
+
+// Radera ett projekt
+export const deleteProject = async (req: ProtectedRequest, res: Response) => {
+    const userId = req.user?.id;
+    const { projectId } = req.params;
+
+    if (!userId) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    try {
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+        });
+
+        if (!project || project.ownerId !== userId) {
+            res.status(403).json({ message: "Not allowed to delete this project" });
+            return;
+        }
+
+        await prisma.project.delete({ where: { id: projectId } });
+        res.status(200).json({ message: "Project deleted successfully" });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error deleting project" });
+    }
+};
+

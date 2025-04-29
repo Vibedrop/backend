@@ -1,23 +1,13 @@
-import type { Request, Response } from "express";
+import type { Response } from "express";
 import { z } from "zod";
-import { prisma } from "../utilities/prisma.js";
+import { prisma } from "../utilities/prisma";
 import { nanoid } from "nanoid";
+import { ProtectedRequest } from "../middleware/authMiddleware";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_MIME_TYPES = ["audio/wave", "audio/wav", "audio/x-wav"];
 
-interface RequestWithAuth extends Request {
-    user?: {
-        id: string;
-        email: string;
-    };
-}
-
-export async function uploadFile(req: RequestWithAuth, res: Response) {
-    req.user = {
-        id: "cm9u5rwa40000phmlpu6x2f6w",
-        email: "sixten@chasacademy.se",
-    };
+export async function uploadFile(req: ProtectedRequest, res: Response) {
     // Validate user
     const parsedUser = z
         .object({
@@ -108,4 +98,55 @@ export async function uploadFile(req: RequestWithAuth, res: Response) {
     res.status(200).json({
         message: "File uploaded successfully",
     });
+}
+
+export async function createProject(req: ProtectedRequest, res: Response) {
+    // Validate user
+    const parsedUser = z
+        .object({
+            id: z.string(),
+            email: z.string().email(),
+        })
+        .safeParse(req.user);
+
+    if (!parsedUser.success) {
+        res.status(400).json({
+            message: "Bad request",
+        });
+        return;
+    }
+
+    // Validate request body
+    const parsedBody = z
+        .object({
+            name: z.string().min(1),
+            description: z.string().min(1),
+        })
+        .safeParse(req.body);
+
+    if (!parsedBody.success) {
+        res.status(400).json({
+            message: "Bad request",
+        });
+        return;
+    }
+
+    try {
+        const project = await prisma.project.create({
+            data: {
+                name: parsedBody.data.name,
+                description: parsedBody.data.description,
+                ownerId: parsedUser.data.id,
+            },
+        });
+
+        res.status(201).json({
+            projectId: project.id,
+        });
+    } catch (e) {
+        console.log(e);
+        res.status(500).json({
+            message: "Internal server error",
+        });
+    }
 }

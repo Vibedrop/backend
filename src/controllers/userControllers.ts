@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
-import type { ProtectedRequest } from "../middleware/authMiddleware.js";
-import { prisma, type User } from "../utilities/prisma.js";
+import type { ProtectedRequest } from "../middleware/authMiddleware";
+import { prisma } from "../utilities/prisma";
 
 export function getUser(req: Request, res: Response) {
     res.status(200).json("getUser");
@@ -18,6 +18,24 @@ export const getUserProfile = async (req: ProtectedRequest, res: Response) => {
     try {
         const user = await prisma.user.findUnique({
             where: { id: userId },
+            select: {
+                id: true,
+                email: true,
+                username: true,
+                emailVerified: true,
+                createdAt: true,
+                ownedProjects: {
+                    select: {
+                        id: true,
+                        name: true,
+                        description: true,
+                        createdAt: true,
+                    },
+                    orderBy: {
+                        createdAt: "desc",
+                    },
+                },
+            },
         });
 
         if (!user) {
@@ -25,15 +43,7 @@ export const getUserProfile = async (req: ProtectedRequest, res: Response) => {
             return;
         }
 
-        const userWithoutPassword: Omit<User, "password"> = {
-            id: user.id,
-            email: user.email,
-            username: user.username,
-            emailVerified: user.emailVerified,
-            createdAt: user.createdAt,
-        };
-
-        res.status(200).json(userWithoutPassword);
+        res.status(200).json(user);
         return;
     } catch (err) {
         console.error(err);

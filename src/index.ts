@@ -2,10 +2,10 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
-import { FRONTEND_URL } from "./utilities/config.js";
-import userRouter from "./routes/userRoutes.js";
-import authRouter from "./routes/authRoutes.js";
-import projectRouter from "./routes/projectRoutes.js";
+import { FRONTEND_URL } from "./utilities/config";
+import userRouter from "./routes/userRoutes";
+import authRouter from "./routes/authRoutes";
+import projectRouter from "./routes/projectRoutes";
 
 const PORT = 3000;
 const app = express();

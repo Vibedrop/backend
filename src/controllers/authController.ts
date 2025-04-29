@@ -1,9 +1,9 @@
 import type { Request, Response } from "express";
-import { createJWT } from "../utilities/createJWT.js";
-import { prisma } from "../utilities/prisma.js";
+import { createJWT } from "../utilities/createJWT";
+import { prisma } from "../utilities/prisma";
 import bcrypt from "bcryptjs";
 import z from "zod";
-import { clearAuthCookie, setAuthCookie } from "../utilities/cookies.js";
+import { clearAuthCookie, setAuthCookie } from "../utilities/cookies";
 
 const SALT_ROUNDS = 10;
 

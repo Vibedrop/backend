@@ -1,9 +1,7 @@
 import { Router } from "express";
-import { createProject, uploadFile } from "../controllers/projectController";
-import multer, { memoryStorage } from "multer";
 import { authMiddleware } from "../middleware/authMiddleware";
-// import { authMiddleware } from "../middleware/authMiddleware.js";
-
+import { createProject, deleteProject, uploadFile } from "../controllers/projectController";
+import multer, { memoryStorage } from "multer";
 const router = Router();
 
 // Middleware to handle file uploads
@@ -13,5 +11,6 @@ const upload = multer({
 
 router.post("/", authMiddleware, createProject);
 router.post("/:projectId/files", upload.single("file"), uploadFile);
+router.delete("/:projectId", authMiddleware, deleteProject);
 
 export default router;

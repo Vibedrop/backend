@@ -1,0 +1,47 @@
+[33m448fa9b[m[33m ([m[1;36mHEAD[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: reset: moving to HEAD^
+[33m3b60314[m HEAD@{1}: rebase (continue): skapa projekt med funktioner
+[33m448fa9b[m[33m ([m[1;36mHEAD[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{2}: rebase (start): checkout origin/main
+[33mbaa8131[m[33m ([m[1;31morigin/skapaProjekt[m[33m, [m[1;32mskapaProjekt[m[33m)[m HEAD@{3}: commit: skapa project-fil
+[33m3472085[m HEAD@{4}: checkout: moving from fil-hantering to skapaProjekt
+[33m8789096[m[33m ([m[1;32mmain[m[33m, [m[1;32mfil-hantering[m[33m)[m HEAD@{5}: checkout: moving from main to fil-hantering
+[33m8789096[m[33m ([m[1;32mmain[m[33m, [m[1;32mfil-hantering[m[33m)[m HEAD@{6}: pull: Fast-forward
+[33m66bfd11[m HEAD@{7}: checkout: moving from skapaProjekt to main
+[33m3472085[m HEAD@{8}: rebase (finish): returning to refs/heads/skapaProjekt
+[33m3472085[m HEAD@{9}: rebase (continue): skapa projekt med funktioner
+[33m8789096[m[33m ([m[1;32mmain[m[33m, [m[1;32mfil-hantering[m[33m)[m HEAD@{10}: rebase (start): checkout origin/main
+[33m3b79308[m HEAD@{11}: commit: skapa projekt med funktioner
+[33m66bfd11[m HEAD@{12}: checkout: moving from main to skapaProjekt
+[33m66bfd11[m HEAD@{13}: pull: Fast-forward
+[33mcf4f737[m HEAD@{14}: pull: Fast-forward
+[33m2ab371e[m[33m ([m[1;32mimportera-till-S3[m[33m)[m HEAD@{15}: checkout: moving from auth-jwt-cookie to main
+[33m9a2197a[m[33m ([m[1;32mauth-jwt-cookie[m[33m)[m HEAD@{16}: checkout: moving from main to auth-jwt-cookie
+[33m2ab371e[m[33m ([m[1;32mimportera-till-S3[m[33m)[m HEAD@{17}: checkout: moving from auth-jwt-cookie to main
+[33m9a2197a[m[33m ([m[1;32mauth-jwt-cookie[m[33m)[m HEAD@{18}: checkout: moving from importera-till-S3 to auth-jwt-cookie
+[33m2ab371e[m[33m ([m[1;32mimportera-till-S3[m[33m)[m HEAD@{19}: checkout: moving from main to importera-till-S3
+[33m2ab371e[m[33m ([m[1;32mimportera-till-S3[m[33m)[m HEAD@{20}: pull: Fast-forward
+[33m33798b5[m HEAD@{21}: pull: Fast-forward
+[33me977b6b[m HEAD@{22}: checkout: moving from fetch-till-s3 to main
+[33m1548d82[m[33m ([m[1;32mfetch-till-s3[m[33m)[m HEAD@{23}: commit: fetch till s3
+[33me977b6b[m HEAD@{24}: checkout: moving from main to fetch-till-s3
+[33me977b6b[m HEAD@{25}: pull: Fast-forward
+[33m2499f72[m HEAD@{26}: checkout: moving from uppdate-prisma1 to main
+[33mccad662[m[33m ([m[1;31morigin/uppdate-prisma1[m[33m, [m[1;32muppdate-prisma1[m[33m)[m HEAD@{27}: checkout: moving from add-s3-test-route to uppdate-prisma1
+[33mc1578ff[m[33m ([m[1;32madd-s3-test-route[m[33m)[m HEAD@{28}: commit: supabase install
+[33m11c2100[m HEAD@{29}: commit (merge): Merge branch 'add-s3-test-route' of https://git.chasacademy.dev/chas-challenge-2025/vibedrop/backend into add-s3-test-route
+[33mccad662[m[33m ([m[1;31morigin/uppdate-prisma1[m[33m, [m[1;32muppdate-prisma1[m[33m)[m HEAD@{30}: checkout: moving from uppdate-prisma1 to add-s3-test-route
+[33mccad662[m[33m ([m[1;31morigin/uppdate-prisma1[m[33m, [m[1;32muppdate-prisma1[m[33m)[m HEAD@{31}: commit: uppdate prisma
+[33m2499f72[m HEAD@{32}: checkout: moving from main to uppdate-prisma1
+[33m2499f72[m HEAD@{33}: checkout: moving from uppdate-Prisma to main
+[33maeee715[m[33m ([m[1;32muppdate-prisma[m[33m)[m HEAD@{34}: checkout: moving from main to uppdate-Prisma
+[33m2499f72[m HEAD@{35}: pull: Fast-forward
+[33maeee715[m[33m ([m[1;32muppdate-prisma[m[33m)[m HEAD@{36}: checkout: moving from uppdate-prisma to main
+[33maeee715[m[33m ([m[1;32muppdate-prisma[m[33m)[m HEAD@{37}: checkout: moving from main to uppdate-prisma
+[33maeee715[m[33m ([m[1;32muppdate-prisma[m[33m)[m HEAD@{38}: pull: Fast-forward
+[33m54832eb[m HEAD@{39}: checkout: moving from user-endpoints to main
+[33mcb9eb4d[m[33m ([m[1;32muser-endpoints[m[33m)[m HEAD@{40}: checkout: moving from main to user-endpoints
+[33m54832eb[m HEAD@{41}: pull: Fast-forward
+[33m1865058[m HEAD@{42}: checkout: moving from user-endpoints to main
+[33mcb9eb4d[m[33m ([m[1;32muser-endpoints[m[33m)[m HEAD@{43}: commit: Dbngin test
+[33m60972ef[m HEAD@{44}: commit: DBngin test
+[33m4b9dec8[m HEAD@{45}: checkout: moving from main to user-endpoints
+[33m1865058[m HEAD@{46}: clone: from https://git.chasacademy.dev/chas-challenge-2025/vibedrop/backend.git

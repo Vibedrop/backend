@@ -5,7 +5,11 @@ import cors from "cors";
 import { FRONTEND_URL } from "./utilities/config";
 import userRouter from "./routes/userRoutes";
 import authRouter from "./routes/authRoutes";
+import testRouter from "./routes/testRoutes";
 import projectRouter from "./routes/projectRoutes";
+import audioRouter from "./routes/audioRoutes";
+import collaboratorRouter from "./routes/collaboratorRoutes";
+import commentRouter from "./routes/commentRoutes";
 
 const PORT = 3000;
 const app = express();
@@ -30,6 +34,11 @@ app.use(cookieParser());
 app.use("/users", userRouter);
 app.use("/auth", authRouter);
 app.use("/projects", projectRouter);
+app.use("/audio", audioRouter);
+app.use("/collaborators", collaboratorRouter);
+app.use("/comments", commentRouter);
+
+app.use("/test", testRouter);
 
 app.get("/", (req, res) => {
     res.status(200).json({

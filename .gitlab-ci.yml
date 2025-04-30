@@ -38,6 +38,8 @@ build:
         - src/**/*.ts
         - docker-compose.yml
         - .gitlab-ci.yml
+        - prisma/schema.prisma
+        - prisma/migrations/**/*
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
       changes:
         - Dockerfile
@@ -47,7 +49,10 @@ build:
         - src/**/*.ts
         - docker-compose.yml
         - .gitlab-ci.yml
+        - prisma/schema.prisma
+        - prisma/migrations/**/*
 
+        
 #############################################
 # 2) Bygg "utils"-imagen
 #############################################

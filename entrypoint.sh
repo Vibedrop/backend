@@ -12,7 +12,7 @@ echo "Databasen är redo!"
 
 # Kör databas-migreringar
 echo "Kör databas-migreringar..."
-npm run migrate
+npx prisma migrate deploy
 
 # Generera Prisma-klienten
 echo "Genererar Prisma-klient..."

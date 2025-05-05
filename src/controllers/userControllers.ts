@@ -24,6 +24,11 @@ export const getUserProfile = async (req: ProtectedRequest, res: Response) => {
                 username: true,
                 emailVerified: true,
                 createdAt: true,
+                collaborations: {
+                    select: {
+                    project: true
+                }
+                },
                 ownedProjects: {
                     select: {
                         id: true,

@@ -7,6 +7,36 @@ import { ProtectedRequest } from "../middleware/authMiddleware";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_MIME_TYPES = ["audio/wave", "audio/wav", "audio/x-wav"];
 
+export async function getProject(req: ProtectedRequest, res: Response) {
+    const parsedProject = z
+        .object({
+            projectId: z.string(),
+        })
+        .safeParse(req.body);
+
+    if (!parsedProject.success) {
+        res.status(400).json({
+            message: "Bad request",
+        });
+        return;
+    }
+    const project = await prisma.project.findUnique({
+        where: {
+            id: parsedProject.data.projectId,
+        },
+        include: {
+            collaborators: {
+                include: {
+                    user: true,
+                },
+            },
+            owner: true, // this includes the project owner (User)
+            audioFiles: true,
+        },
+    });
+    res.status(200).json(project);
+}
+
 export async function uploadFile(req: ProtectedRequest, res: Response) {
     // Validate user
     const parsedUser = z
@@ -150,7 +180,6 @@ export async function createProject(req: ProtectedRequest, res: Response) {
     }
 }
 
-
 // Radera ett projekt
 export const deleteProject = async (req: ProtectedRequest, res: Response) => {
     const userId = req.user?.id;
@@ -167,16 +196,16 @@ export const deleteProject = async (req: ProtectedRequest, res: Response) => {
         });
 
         if (!project || project.ownerId !== userId) {
-            res.status(403).json({ message: "Not allowed to delete this project" });
+            res.status(403).json({
+                message: "Not allowed to delete this project",
+            });
             return;
         }
 
         await prisma.project.delete({ where: { id: projectId } });
         res.status(200).json({ message: "Project deleted successfully" });
-
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error deleting project" });
     }
 };
-

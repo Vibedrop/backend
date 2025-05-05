@@ -1,7 +1,35 @@
 import { Response } from "express";
 import { prisma } from "../utilities/prisma";
 import { ProtectedRequest } from "../middleware/authMiddleware";
+import { z } from "zod";
 
+export const getComment = async (req: ProtectedRequest, res: Response) => {
+    const parsedFileId = z
+        .object({
+            fileid: z.string(),
+        })
+        .safeParse(req.body);
+
+    if (!parsedFileId.success) {
+        res.status(400).json({
+            message: "Bad request",
+        });
+        return;
+    }
+    try {
+        const comments = await prisma.comment.findMany({
+            where: { fileId: parsedFileId.data.fileid },
+            include: {
+                author: true,
+            },
+        });
+
+        res.status(201).json(comments);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error finding comment" });
+    }
+};
 
 export const addComment = async (req: ProtectedRequest, res: Response) => {
     const userId = req.user?.id;
@@ -30,7 +58,9 @@ export const addComment = async (req: ProtectedRequest, res: Response) => {
         }
 
         const isOwner = audioFile.project.ownerId === userId;
-        const isCollaborator = audioFile.project.collaborators.some(c => c.userId === userId);
+        const isCollaborator = audioFile.project.collaborators.some(
+            c => c.userId === userId,
+        );
 
         if (!isOwner && !isCollaborator) {
             res.status(403).json({ message: "Not authorized to comment" });
@@ -47,7 +77,6 @@ export const addComment = async (req: ProtectedRequest, res: Response) => {
         });
 
         res.status(201).json(comment);
-
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error adding comment" });

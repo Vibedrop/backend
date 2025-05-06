@@ -84,6 +84,7 @@ test:
   image: docker:20
   services:
     - docker:20-dind
+  needs: [build]  # Vänta på att build-jobbet är klart
   variables:
     DOCKER_TLS_CERTDIR: ""
   before_script:
@@ -134,13 +135,19 @@ test:
       # Städa bort containern
       docker rm -f "${CONTAINER_NAME}"
   rules:
-    - if: $CI_MERGE_REQUEST_ID
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - Dockerfile
+        - package.json
+        - package-lock.json
+        - tsconfig.json
+        - src/**/*.ts
+        - docker-compose.yml
+        - .gitlab-ci.yml
+        - prisma/schema.prisma
+        - prisma/migrations/**/*
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-    - when: always
-
-
-
-
+      when: always
 
 
 #############################################
@@ -348,3 +355,4 @@ stop_review:
           exit 1
         fi
       fi
+

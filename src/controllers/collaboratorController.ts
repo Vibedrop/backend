@@ -5,7 +5,7 @@ import { ProtectedRequest } from "../middleware/authMiddleware";
 // Bjuda in collaborator
 export const addCollaborator = async (req: ProtectedRequest, res: Response) => {
     const userId = req.user?.id;
-    const { projectId, collaboratorId } = req.body;
+    const { projectId, email } = req.body;
 
     if (!userId) {
         res.status(401).json({ message: "Unauthorized" });
@@ -13,8 +13,17 @@ export const addCollaborator = async (req: ProtectedRequest, res: Response) => {
     }
 
     try {
+        const Usercollaborator = await prisma.user.findUnique({
+            where: { email: email },
+        });
+
+        if (Usercollaborator === null) {
+            res.status(403).json({ message: "Cant find the user" });
+            return;
+        }
+
         const project = await prisma.project.findUnique({
-            where: { id: projectId }
+            where: { id: projectId },
         });
 
         if (!project || project.ownerId !== userId) {
@@ -25,12 +34,11 @@ export const addCollaborator = async (req: ProtectedRequest, res: Response) => {
         const collaborator = await prisma.collaborator.create({
             data: {
                 projectId,
-                userId: collaboratorId,
+                userId: Usercollaborator.id,
             },
         });
 
         res.status(201).json(collaborator);
-
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error adding collaborator" });

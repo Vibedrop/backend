@@ -33,23 +33,21 @@ export const getComment = async (req: ProtectedRequest, res: Response) => {
 
 export const addComment = async (req: ProtectedRequest, res: Response) => {
     const userId = req.user?.id;
-        const parsedComment = z
-            .object({
-                content: z.string(),
-                fileId: z.string(),
-                timestamp: z.number(),
-            })
-            .safeParse(req.body);
+    const parsedComment = z
+        .object({
+            content: z.string(),
+            fileId: z.string(),
+            timestamp: z.number(),
+        })
+        .safeParse(req.body);
 
-            
-            
-            if (!userId) {
-                res.status(401).json({ message: "Unauthorized" });
-                return;
-            }
-            
-            try {
-                const { content, fileId, timestamp } = parsedComment.data!;
+    if (!userId) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    try {
+        const { content, fileId, timestamp } = parsedComment.data!;
         const audioFile = await prisma.audioFile.findUnique({
             where: { id: fileId },
             include: {

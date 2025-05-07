@@ -26,8 +26,8 @@ export const getUserProfile = async (req: ProtectedRequest, res: Response) => {
                 createdAt: true,
                 collaborations: {
                     select: {
-                    project: true
-                }
+                        project: true,
+                    },
                 },
                 ownedProjects: {
                     select: {

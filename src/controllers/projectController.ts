@@ -3,9 +3,6 @@ import { z } from "zod";
 import { prisma } from "../utilities/prisma";
 import { ProtectedRequest } from "../middleware/authMiddleware";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
-const ALLOWED_MIME_TYPES = ["audio/wave", "audio/wav", "audio/x-wav"];
-
 // Skapa nytt projekt
 export async function createProject(req: ProtectedRequest, res: Response) {
     // Validate user
@@ -116,37 +113,3 @@ export const deleteProject = async (req: ProtectedRequest, res: Response) => {
         res.status(500).json({ message: "Error deleting project" });
     }
 };
-
-// Ladda upp en ljudfil
-export async function uploadFile(req: ProtectedRequest, res: Response) {
-    const userId = req.user?.id;
-    const { projectId } = req.params;
-    const name = req.body.fileName;
-    const s3Key = req.body.s3Key;
-
-    if (!userId) {
-        res.status(401).json({ message: "Unauthorized" });
-        return;
-    }
-
-    // Create a db record for the audio file
-    // TODO: Handle duplicates and possibly move to audioRoutes/controllers
-    try {
-        await prisma.audioFile.create({
-            data: {
-                name: name,
-                s3Key: s3Key,
-                projectId: projectId,
-            },
-        });
-    } catch {
-        res.status(500).json({
-            message: "Internal server error",
-        });
-        return;
-    }
-
-    res.status(200).json({
-        message: "File uploaded successfully",
-    });
-}

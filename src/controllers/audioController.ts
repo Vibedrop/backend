@@ -1,37 +1,167 @@
 import { Response } from "express";
 import { prisma } from "../utilities/prisma";
 import { ProtectedRequest } from "../middleware/authMiddleware";
-
+import { supabase } from "../utilities/supabase";
+import { nanoid } from "nanoid";
 
 export const uploadAudio = async (req: ProtectedRequest, res: Response) => {
     const userId = req.user?.id;
-    const { projectId } = req.body;
-    const file = req.file as Express.MulterS3.File;
+    const file = req.file as Express.Multer.File;
+    const { projectId } = req.params;
+    const s3Key = nanoid(21);
 
-    if (!file || !userId) {
-        res.status(400).json({ message: "No file uploaded or unauthorized" });
+    if (!userId) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    if (!file) {
+        res.status(400).json({ message: "No file uploaded" });
         return;
     }
 
     try {
-        const project = await prisma.project.findUnique({ where: { id: projectId } });
-        if (!project || project.ownerId !== userId) {
-            res.status(403).json({ message: "Not authorized" });
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+        });
+        if (!project) {
+            res.status(404).json({ message: "Project not found" });
+            return;
+        }
+        if (project.ownerId !== userId) {
+            res.status(403).json({
+                message: "Not allowed to upload to this project",
+            });
             return;
         }
 
-        const newAudio = await prisma.audioFile.create({
+        const path = `${project.name}/${s3Key}`;
+
+        // Upload the file to Supabase Storage
+        const { data, error } = await supabase.storage
+            .from(process.env.SUPABASE_BUCKET_NAME as string)
+            .upload(path, file.buffer, {
+                contentType: file.mimetype,
+                // upsert: true,
+                // upsert = skriva över filen om den redan finns
+            });
+
+        const newAudioFile = await prisma.audioFile.create({
             data: {
                 name: file.originalname,
-                s3Key: file.key,
+                s3Key: s3Key,
                 projectId: projectId,
             },
         });
 
-        res.status(201).json(newAudio);
-
+        res.status(201).json(newAudioFile);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error uploading audio" });
+    }
+};
+
+export const getSignedUrl = async (req: ProtectedRequest, res: Response) => {
+    const userId = req.user?.id;
+    const { projectId, s3Key } = req.params;
+
+    if (!userId) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    try {
+        const audioFile = await prisma.audioFile.findUnique({
+            where: { s3Key: s3Key },
+        });
+        if (!audioFile) {
+            res.status(404).json({ message: "Audio file not found" });
+            return;
+        }
+
+        const project = await prisma.project.findUnique({
+            where: { id: audioFile?.projectId },
+        });
+        if (!project) {
+            res.status(404).json({ message: "Project not found" });
+            return;
+        }
+        if (project.ownerId !== userId) {
+            res.status(403).json({
+                message: "Not allowed to access this project",
+            });
+            return;
+        }
+        if (project.id !== projectId) {
+            res.status(400).json({
+                message: "Request does not match current project",
+            });
+            return;
+        }
+
+        const path = `${project.name}/${audioFile.s3Key}`;
+
+        const { data, error } = await supabase.storage
+            .from(process.env.SUPABASE_BUCKET_NAME as string)
+            .createSignedUrl(path, 60 * 60, { download: false }); // 1 hour expiration
+        if (error || !data.signedUrl) {
+            res.status(500).json({ message: "Error generating signed URL" });
+            return;
+        }
+
+        res.status(200).json({ url: data.signedUrl });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error fetching audio files" });
+    }
+};
+
+export const getSignedUrls = async (req: ProtectedRequest, res: Response) => {
+    const userId = req.user?.id;
+    const { projectId } = req.params;
+
+    if (!userId) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    try {
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+        });
+        if (!project) {
+            res.status(404).json({ message: "Project not found" });
+            return;
+        }
+        if (project.ownerId !== userId) {
+            res.status(403).json({
+                message: "Not allowed to access this project",
+            });
+            return;
+        }
+
+        const audioFiles = await prisma.audioFile.findMany({
+            where: { projectId: projectId },
+        });
+
+        const signedUrls = await Promise.all(
+            audioFiles.map(async audioFile => {
+                const path = `${project.name}/${audioFile.s3Key}`;
+
+                const { data, error } = await supabase.storage
+                    .from(process.env.SUPABASE_BUCKET_NAME as string)
+                    .createSignedUrl(path, 60 * 60, { download: false }); // 1 hour expiration
+                if (error || !data.signedUrl) {
+                    throw new Error("Error generating signed URL");
+                }
+
+                return { ...audioFile, signedUrl: data.signedUrl };
+            }),
+        );
+
+        res.status(200).json(signedUrls);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error fetching audio files" });
     }
 };

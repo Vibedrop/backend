@@ -4,7 +4,6 @@ services:
     restart: always
     networks:
       - traefik-public
-      - internal-only
     environment:
       - NODE_ENV=production
       - DATABASE_URL=${DATABASE_URL}
@@ -35,6 +34,4 @@ services:
 
 networks:
   traefik-public:
-    external: true
-  internal-only:
     external: true

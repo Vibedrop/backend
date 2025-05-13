@@ -121,7 +121,8 @@ test:
         -e SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
         "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
 
-      sleep 10
+      echo "Väntar 30 sekunder på att backend ska starta..."
+      sleep 30
 
       export IS_RUNNING=$(docker inspect --format '{{.State.Running}}' "${CONTAINER_NAME}")
       echo "Container Running: ${IS_RUNNING}"
@@ -137,7 +138,20 @@ test:
       RAW_LOGS=$(docker logs "${CONTAINER_NAME}" | cat -v)
       echo "$RAW_LOGS"
 
-      # Fånga Prisma-migreringsfel
+      # FEL: Databasen går inte att nå
+      if echo "$RAW_LOGS" | grep -q "nc: bad address"; then
+        echo "FEL: Containern kunde inte hitta databasens hostname (DNS-fel)."
+        docker rm -f "${CONTAINER_NAME}" || true
+        exit 1
+      fi
+
+      if echo "$RAW_LOGS" | grep -q "Databasen inte redo än"; then
+        echo "FEL: Containern kunde inte ansluta till databasen (timeout)."
+        docker rm -f "${CONTAINER_NAME}" || true
+        exit 1
+      fi
+
+      # FEL: Prisma-migreringsfel
       if echo "$RAW_LOGS" | grep -q "P3009"; then
         echo "Migreringsfel (P3009) – en tidigare migration har misslyckats."
         echo "$RAW_LOGS" | grep -A 10 "P3009"
@@ -159,22 +173,9 @@ test:
         exit 1
       fi
 
-      echo "✅ Test OK – inga migreringsfel upptäckta."
+      echo "✅ Test OK – inga fel upptäckta."
       docker rm -f "${CONTAINER_NAME}" || true
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      changes:
-        - Dockerfile
-        - package.json
-        - package-lock.json
-        - tsconfig.json
-        - src/**/*.ts
-        - docker-compose.yml
-        - .gitlab-ci.yml
-        - prisma/schema.prisma
-        - prisma/migrations/**/*
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-      when: always
+
 
 
 

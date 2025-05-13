@@ -81,7 +81,7 @@ build-utils:
 #############################################
 validate_migrations:
   stage: test
-  image: "$CI_REGISTRY_IMAGE/utils:latest"
+  image: node:18-alpine
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:

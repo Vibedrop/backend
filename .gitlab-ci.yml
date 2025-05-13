@@ -271,17 +271,20 @@ deploy_review:
 #############################################
 migrate_main:
   stage: deploy
-  image: "$CI_REGISTRY_IMAGE/utils:latest"
+  image: node:20-alpine
   needs: [build]
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
   script:
+    - npm install -g prisma
     - echo "Startar migreringssteg..."
     - echo "Kontrollerar migreringsstatus..."
+    - sleep 10
     - npx prisma migrate status
 
     - echo "Migreringsstatus ser korrekt ut."
     - echo "Kör 'prisma migrate deploy' för att uppdatera databasen..."
+    - sleep 10
     - npx prisma migrate deploy
 
     - echo "Migreringen är slutförd utan fel. Fortsätter till deploy."

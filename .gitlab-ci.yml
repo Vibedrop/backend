@@ -76,37 +76,17 @@ build-utils:
         - Dockerfile-utils
 
 
-#############################################
-# 2.5) Validera migreringar i MR-pipelines
-#############################################
-validate_migrations:
-  stage: test
-  image: node:18-alpine
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      changes:
-        - prisma/schema.prisma
-        - prisma/migrations/**/*
-
-  script:
-    - echo "Validerar Prisma-migreringar i denna MR..."
-    - echo "Kör 'npx prisma migrate status' för att säkerställa att historiken är i synk..."
-
-    - npx prisma migrate status
-
-    - echo "Validering klar. Inga problem med migreringarna hittades."
-
 
 #############################################
-# 3) Test-job (för att stoppa deploy vid fel)
+# 3) Test-job (stoppar deploy vid migreringsfel)
 #############################################
-             
+
 test:
   stage: test
   image: docker:20
   services:
     - docker:20-dind
-  needs: [build]  # Vänta på att build-jobbet är klart
+  needs: [build]
   variables:
     DOCKER_TLS_CERTDIR: ""
   before_script:
@@ -121,14 +101,16 @@ test:
     - |
       apk add --no-cache curl
 
-      # Döda gammal container om den finns
+      # Namnge containern
       export CONTAINER_NAME="backend-test-${CI_JOB_ID}"
+
+      # Döda gammal test-container om den finns
       docker rm -f "${CONTAINER_NAME}" || true
 
-      # Pulla rätt backend-image
+      echo "Pullar backend-image: $CI_REGISTRY_IMAGE:$DOCKER_TAG"
       docker pull "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
 
-      # Starta backend-containern
+      echo "Startar backend-container..."
       docker run -d --name "${CONTAINER_NAME}" -P \
         -e NODE_ENV=production \
         -e DATABASE_URL="$DATABASE_URL" \
@@ -137,25 +119,37 @@ test:
         -e S3_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID" \
         -e S3_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY" \
         -e S3_ENDPOINT="$S3_ENDPOINT" \
+        -e SUPABASE_BUCKET_NAME=$"SUPABASE_BUCKET_NAME"\
+        -e SUPABASE_URL="$SUPABASE_URL"\
+        -e SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY"\
         "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
 
-      # Vänta lite för säkerhets skull
       sleep 10
 
-      # Kolla att containern är running
+      # Kolla att containern startat
       export IS_RUNNING=$(docker inspect --format '{{.State.Running}}' "${CONTAINER_NAME}")
       echo "Container Running: ${IS_RUNNING}"
 
       if [ "${IS_RUNNING}" != "true" ]; then
-        echo "Backend container startade inte korrekt."
+        echo "Container misslyckades med att starta:"
         docker logs "${CONTAINER_NAME}"
+        docker rm -f "${CONTAINER_NAME}" || true
         exit 1
       fi
 
-      echo "Test OK! Backend-container startades korrekt."
+      echo "Container startad. Hämtar loggar..."
+      docker logs "${CONTAINER_NAME}"
 
-      # Städa bort containern
-      docker rm -f "${CONTAINER_NAME}"
+      # Fånga vanliga Prisma-migreringsfel (P3009: failed migrations etc)
+      if docker logs "${CONTAINER_NAME}" | grep -qE "Error: P[0-9]{4}"; then
+        echo "Prisma-migreringsfel upptäckt:"
+        docker logs "${CONTAINER_NAME}" | grep -A 10 -E "Error: P[0-9]{4}"
+        docker rm -f "${CONTAINER_NAME}" || true
+        exit 1
+      fi
+
+      echo "Test OK – inga migreringsfel upptäckta."
+      docker rm -f "${CONTAINER_NAME}" || true
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:
@@ -170,6 +164,8 @@ test:
         - prisma/migrations/**/*
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
       when: always
+
+
 
 
 #############################################

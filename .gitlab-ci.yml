@@ -121,7 +121,7 @@ test:
         -e SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
         "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
 
-      echo "Väntar 30 sekunder på att backend ska starta..."
+      echo "Väntar 30 sekunder på att backend ska hinna starta och köra eventuell migrering..."
       sleep 30
 
       export IS_RUNNING=$(docker inspect --format '{{.State.Running}}' "${CONTAINER_NAME}")
@@ -138,45 +138,55 @@ test:
       RAW_LOGS=$(docker logs "${CONTAINER_NAME}" | cat -v)
       echo "$RAW_LOGS"
 
-      # FEL: Databasen går inte att nå
       if echo "$RAW_LOGS" | grep -q "nc: bad address"; then
-        echo "FEL: Containern kunde inte hitta databasens hostname (DNS-fel)."
+        echo "FEL: Databasens hostname kunde inte översättas. Kolla att 'vibedrop-infra-db' är korrekt och synlig i nätverket."
         docker rm -f "${CONTAINER_NAME}" || true
         exit 1
       fi
 
       if echo "$RAW_LOGS" | grep -q "Databasen inte redo än"; then
-        echo "FEL: Containern kunde inte ansluta till databasen (timeout)."
+        echo "FEL: Applikationen kunde inte nå databasen inom timeout."
         docker rm -f "${CONTAINER_NAME}" || true
         exit 1
       fi
 
-      # FEL: Prisma-migreringsfel
       if echo "$RAW_LOGS" | grep -q "P3009"; then
-        echo "Migreringsfel (P3009) – en tidigare migration har misslyckats."
+        echo "FEL: Prisma-migreringsfel (P3009) – tidigare migration har misslyckats."
         echo "$RAW_LOGS" | grep -A 10 "P3009"
         docker rm -f "${CONTAINER_NAME}" || true
         exit 1
       fi
 
       if echo "$RAW_LOGS" | grep -q "P1001"; then
-        echo "Migreringsfel (P1001) – databasen kunde inte nås."
+        echo "FEL: Prisma-migreringsfel (P1001) – kunde inte nå databasen."
         echo "$RAW_LOGS" | grep -A 10 "P1001"
         docker rm -f "${CONTAINER_NAME}" || true
         exit 1
       fi
 
       if echo "$RAW_LOGS" | grep -q "Error:"; then
-        echo "Ett generellt fel hittades i loggen:"
+        echo "FEL: Ett generellt fel hittades i loggen:"
         echo "$RAW_LOGS" | grep -A 10 "Error:"
         docker rm -f "${CONTAINER_NAME}" || true
         exit 1
       fi
 
-      echo "✅ Test OK – inga fel upptäckta."
+      echo "Test OK – inga fel upptäckta."
       docker rm -f "${CONTAINER_NAME}" || true
-
-
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - Dockerfile
+        - package.json
+        - package-lock.json
+        - tsconfig.json
+        - src/**/*.ts
+        - docker-compose.yml
+        - .gitlab-ci.yml
+        - prisma/schema.prisma
+        - prisma/migrations/**/*
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      when: always
 
 
 #############################################

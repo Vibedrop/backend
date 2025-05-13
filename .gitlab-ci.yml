@@ -75,6 +75,28 @@ build-utils:
       changes:
         - Dockerfile-utils
 
+
+#############################################
+# 2.5) Validera migreringar i MR-pipelines
+#############################################
+validate_migrations:
+  stage: test
+  image: "$CI_REGISTRY_IMAGE/utils:latest"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - prisma/schema.prisma
+        - prisma/migrations/**/*
+
+  script:
+    - echo "Validerar Prisma-migreringar i denna MR..."
+    - echo "Kör 'npx prisma migrate status' för att säkerställa att historiken är i synk..."
+
+    - npx prisma migrate status
+
+    - echo "Validering klar. Inga problem med migreringarna hittades."
+
+
 #############################################
 # 3) Test-job (för att stoppa deploy vid fel)
 #############################################
@@ -228,11 +250,34 @@ deploy_review:
 
 
 #############################################
+# 4.5) Kör migreringar före deploy till main
+#############################################
+migrate_main:
+  stage: deploy
+  image: "$CI_REGISTRY_IMAGE/utils:latest"
+  needs: [build]
+  rules:
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+  script:
+    - echo "Startar migreringssteg..."
+    - echo "Kontrollerar migreringsstatus..."
+    - npx prisma migrate status
+
+    - echo "Migreringsstatus ser korrekt ut."
+    - echo "Kör 'prisma migrate deploy' för att uppdatera databasen..."
+    - npx prisma migrate deploy
+
+    - echo "Migreringen är slutförd utan fel. Fortsätter till deploy."
+
+
+
+#############################################
 # 5) Deploy-job för main (production)
 #############################################
 deploy_main:
   stage: deploy
   image: "$CI_REGISTRY_IMAGE/utils:latest"
+  needs: [migrate_main]
   environment:
     name: "production"
     url: "https://vibedrop-backend.cc25.chasacademy.dev"

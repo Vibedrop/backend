@@ -9,10 +9,8 @@ RUN npm install
 # Kopiera all källkod
 COPY . .
 
-# 1) Generera Prisma-klienten FÖRE TypeScript-kompilering
-RUN npx prisma generate
 
-# 2) Bygg TypeScript-projektet
+# Bygg TypeScript-projektet
 RUN npm run build
 
 # === Stage 2: Skapa produktionsimage ===

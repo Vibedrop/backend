@@ -276,19 +276,15 @@ migrate_main:
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
   script:
+    - apk add --no-cache bash
     - npm install -g prisma
     - echo "Startar migreringssteg..."
     - echo "Kontrollerar migreringsstatus..."
     - sleep 10
     - npx prisma migrate status
-
-    - echo "Migreringsstatus ser korrekt ut."
     - echo "Kör 'prisma migrate deploy' för att uppdatera databasen..."
     - sleep 10
     - npx prisma migrate deploy
-
-    - echo "Migreringen är slutförd utan fel. Fortsätter till deploy."
-
 
 
 #############################################

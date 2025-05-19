@@ -50,4 +50,3 @@ networks:
   traefik-public:
     external: true
   vibedrop-db:
-    external: true

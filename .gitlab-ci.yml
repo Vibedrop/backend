@@ -293,7 +293,7 @@ deploy_review:
 deploy_main:
   stage: deploy
   image: "$CI_REGISTRY_IMAGE/utils:latest"
-  needs: [migrate_main]
+  #needs: [migrate_main]
   environment:
     name: "production"
     url: "https://vibedrop-backend.cc25.chasacademy.dev"

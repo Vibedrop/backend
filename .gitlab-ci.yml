@@ -40,6 +40,7 @@ build:
         - .gitlab-ci.yml
         - prisma/schema.prisma
         - prisma/migrations/**/*
+        - entrypoint.sh
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
       changes:
         - Dockerfile
@@ -51,6 +52,7 @@ build:
         - .gitlab-ci.yml
         - prisma/schema.prisma
         - prisma/migrations/**/*
+        - entrypoint.sh
 
         
 #############################################
@@ -185,6 +187,7 @@ test:
         - .gitlab-ci.yml
         - prisma/schema.prisma
         - prisma/migrations/**/*
+        - entrypoint.sh
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
       when: always
 

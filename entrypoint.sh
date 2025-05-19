@@ -1,18 +1,22 @@
 #!/bin/sh
 
-# Vänta tills databasen är redo
+# Väntar max 60 sekunder på att databasen ska svara
 echo "Väntar på databas..."
-until nc -z -v -w30 vibedrop-infra-db 5432
+MAX_RETRIES=12
+RETRIES=0
+
+until nc -z -v -w5 vibedrop-infra-db 5432
 do
-  echo "Databasen inte redo än - väntar 5 sekunder..."
+  echo "Databasen inte redo än – väntar 5 sekunder..."
   sleep 5
+  RETRIES=$((RETRIES+1))
+  if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
+    echo "Timeout: Kunde inte nå databasen inom 60 sekunder. Avbryter."
+    exit 1
+  fi
 done
 
 echo "Databasen är redo!"
-
-# Generera Prisma-klienten
-echo "Genererar Prisma-klient..."
-npx prisma generate
 
 # Starta applikationen
 echo "Startar applikationen..."

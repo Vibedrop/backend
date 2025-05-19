@@ -4,10 +4,10 @@ services:
     restart: always
     networks:
       - traefik-public
-      - internal-only
+      - vibedrop-db
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@vibedrop-infra-db:5432/vibedrop
+      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@vibedrop-db:5432/vibedrop
       - S3_BUCKET_NAME=${S3_BUCKET_NAME}
       - S3_REGION=${S3_REGION}
       - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}
@@ -17,7 +17,7 @@ services:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
     depends_on:
-      - vibedrop-infra-db
+      - vibedrop-db
     deploy:
       mode: replicated
       replicas: 1
@@ -34,7 +34,7 @@ services:
         - traefik.http.routers.${NORMALIZED_STACK_NAME}-https.tls.certresolver=le
         - traefik.http.services.${NORMALIZED_STACK_NAME}.loadbalancer.server.port=3000
 
-  vibedrop-infra-db:
+  vibedrop-db:
     image: postgres:16-alpine
     restart: always
     environment:
@@ -44,10 +44,10 @@ services:
     volumes:
       - /srv/docker/volumes/vibedrop/postgres-data:/var/lib/postgresql/data
     networks:
-      - internal-only
+      - vibedrop-db
 
 networks:
   traefik-public:
     external: true
-  internal-only:
+  vibedrop-db:
     external: false

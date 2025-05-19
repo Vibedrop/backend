@@ -18,8 +18,8 @@ done
 
 echo "Databasen är redo!"
 
-echo "DEBUG: POSTGRES_PASSWORD=$POSTGRES_PASSWORD"
-echo "DEBUG: DATABASE_URL=$DATABASE_URL"
+#echo "DEBUG: POSTGRES_PASSWORD=$POSTGRES_PASSWORD"
+#echo "DEBUG: DATABASE_URL=$DATABASE_URL"
 
 # Kör migrering – icke-blockerande och failar mjukt
 echo "Försöker köra 'prisma migrate deploy'..."

@@ -269,22 +269,22 @@ deploy_review:
 #############################################
 # 4.5) Kör migreringar före deploy till main
 #############################################
-migrate_main:
-  stage: deploy
-  image: node:20-alpine
-  needs: [build]
-  rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-  script:
-    - apk add --no-cache bash
-    - npm install -g prisma
-    - echo "Startar migreringssteg..."
-    - echo "Kontrollerar migreringsstatus..."
-    - sleep 10
-    - npx prisma migrate status
-    - echo "Kör 'prisma migrate deploy' för att uppdatera databasen..."
-    - sleep 10
-    - npx prisma migrate deploy
+#migrate_main:
+#  stage: deploy
+#  image: node:20-alpine
+#  needs: [build]
+#  rules:
+#    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+#  script:
+#    - apk add --no-cache bash
+#    - npm install -g prisma
+#    - echo "Startar migreringssteg..."
+#    - echo "Kontrollerar migreringsstatus..."
+#    - sleep 10
+#    - npx prisma migrate status
+#    - echo "Kör 'prisma migrate deploy' för att uppdatera databasen..."
+#    - sleep 10
+#    - npx prisma migrate deploy
 
 
 #############################################

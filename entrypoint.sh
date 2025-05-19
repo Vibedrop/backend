@@ -18,6 +18,10 @@ done
 
 echo "Databasen är redo!"
 
+# Kör migrering – icke-blockerande och failar mjukt
+echo "Försöker köra 'prisma migrate deploy'..."
+npx prisma migrate deploy || echo "Migrering misslyckades, men applikationen startar ändå."
+
 # Starta applikationen
 echo "Startar applikationen..."
 exec npm start

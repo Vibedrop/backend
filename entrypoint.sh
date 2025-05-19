@@ -28,3 +28,4 @@ npx prisma migrate deploy || echo "Migrering misslyckades, men applikationen sta
 # Starta applikationen
 echo "Startar applikationen..."
 exec npm start
+

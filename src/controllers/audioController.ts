@@ -3,6 +3,8 @@ import { prisma } from "../utilities/prisma";
 import { ProtectedRequest } from "../middleware/authMiddleware";
 import { supabase } from "../utilities/supabase";
 import { nanoid } from "nanoid";
+import { z } from "zod";
+import * as musicMetadata from "music-metadata";
 
 export const uploadAudio = async (req: ProtectedRequest, res: Response) => {
     const userId = req.user?.id;
@@ -35,7 +37,14 @@ export const uploadAudio = async (req: ProtectedRequest, res: Response) => {
             return;
         }
 
-        const path = `${project.name}/${s3Key}`;
+        const metadata = await musicMetadata.parseBuffer(
+            file.buffer,
+            file.mimetype,
+        );
+        const duration = metadata.format.duration; // In seconds
+        console.log("duration", duration);
+
+        const path = `${projectId}/${s3Key}`;
 
         // Upload the file to Supabase Storage
         const { data, error } = await supabase.storage
@@ -51,6 +60,7 @@ export const uploadAudio = async (req: ProtectedRequest, res: Response) => {
                 name: file.originalname,
                 s3Key: s3Key,
                 projectId: projectId,
+                duration: duration,
             },
         });
 
@@ -99,7 +109,7 @@ export const getSignedUrl = async (req: ProtectedRequest, res: Response) => {
             return;
         }
 
-        const path = `${project.name}/${audioFile.s3Key}`;
+        const path = `${project.id}/${audioFile.s3Key}`;
 
         const { data, error } = await supabase.storage
             .from(process.env.SUPABASE_BUCKET_NAME as string)
@@ -165,3 +175,23 @@ export const getSignedUrls = async (req: ProtectedRequest, res: Response) => {
         res.status(500).json({ message: "Error fetching audio files" });
     }
 };
+export async function getAudioFile(req: ProtectedRequest, res: Response) {
+    const parsedProject = z
+        .object({
+            projectId: z.string(),
+        })
+        .safeParse(req.body);
+
+    if (!parsedProject.success) {
+        res.status(400).json({
+            message: "Bad request",
+        });
+        return;
+    }
+    const project = await prisma.audioFile.findMany({
+        where: {
+            id: parsedProject.data.projectId,
+        },
+    });
+    res.status(200).json(project);
+}

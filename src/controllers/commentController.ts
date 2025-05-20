@@ -89,3 +89,45 @@ export const addComment = async (req: ProtectedRequest, res: Response) => {
         res.status(500).json({ message: "Error adding comment" });
     }
 };
+
+export const deleteComment = async (req: ProtectedRequest, res: Response) => {
+    const userId = req.user?.id;
+    const { commentId } = req.params;
+
+    if (!userId) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    try {
+        const comment = await prisma.comment.findUnique({
+            where: { id: commentId },
+            select: {
+                id: true,
+                authorId: true 
+            }
+        });
+
+        if (!comment) {
+            res.status(404).json({ message: "Comment not found" });
+            return;
+        }
+
+        // endast kommentarens författare
+        if (comment.authorId !== userId) {
+            res.status(403).json({ 
+                message: "Only the comment author can delete this comment" 
+            });
+            return;
+        }
+
+        await prisma.comment.delete({
+            where: { id: commentId },
+        });
+
+        res.status(200).json({ message: "Comment deleted successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error deleting comment" });
+    }
+};

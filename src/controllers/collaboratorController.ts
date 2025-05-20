@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { prisma } from "../utilities/prisma";
 import { ProtectedRequest } from "../middleware/authMiddleware";
 
@@ -42,5 +42,59 @@ export const addCollaborator = async (req: ProtectedRequest, res: Response) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error adding collaborator" });
+    }
+};
+
+export const removeCollaborator = async (
+    req: ProtectedRequest,
+    res: Response,
+) => {
+    const userId = req.user?.id;
+    const { projectId, collaboratorId } = req.body;
+
+    if (!userId) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    try {
+        // Kontrollera att det är projektägaren som försöker ta bort
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+        });
+
+        if (!project || project.ownerId !== userId) {
+            res.status(403).json({
+                message: "Not authorized to remove collaborator",
+            });
+            return;
+        }
+
+        // Kontrollera att collaborator finns
+        const existing = await prisma.collaborator.findFirst({
+            where: {
+                projectId: projectId,
+                userId: collaboratorId,
+            },
+        });
+
+        if (!existing) {
+            res.status(404).json({
+                message: "Collaborator not found in this project",
+            });
+            return;
+        }
+
+        // Ta bort collaboratorkopplingen
+        await prisma.collaborator.delete({
+            where: { id: existing.id },
+        });
+
+        res.status(200).json({ message: "Collaborator removed successfully" });
+        return;
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error removing collaborator" });
+        return;
     }
 };

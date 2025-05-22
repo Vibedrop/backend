@@ -200,7 +200,7 @@ deploy_review:
   image: "$CI_REGISTRY_IMAGE/utils:latest"
   environment:
     name: "review-$CI_COMMIT_REF_NAME"
-    url: "https://review-$CI_COMMIT_REF_NAME.cc25.chasacademy.dev"
+    url: "https://vdbe-${CI_COMMIT_REF_NAME}.cc25.chasacademy.dev"
     on_stop: stop_review
   rules:
     - if: $CI_MERGE_REQUEST_ID
@@ -208,28 +208,24 @@ deploy_review:
     - |
       set -e
 
-      echo "Loggar in i Portainer..."
-      export PORTAINER_TOKEN=$(curl -s -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
-        --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
-        | jq -r '.jwt')
-
-      export STACK_NAME="$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
-      export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
-      export CI_ENVIRONMENT_SLUG="review-$(echo "$CI_COMMIT_REF_NAME" | tr '[:upper:]' '[:lower:]')"
+      # Sätt kort stacknamn: vdbe-${branch}
+      export STACK_PREFIX="vdbe"
+      export BRANCH_SLUG=$(echo "$CI_COMMIT_REF_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]-' | cut -c1-30)
+      export STACK_NAME="${STACK_PREFIX}-${BRANCH_SLUG}"
+      export NORMALIZED_STACK_NAME="$STACK_NAME"
+      export CI_ENVIRONMENT_SLUG="$STACK_NAME"
       export DOCKER_TAG="$CI_COMMIT_REF_NAME"
 
       echo "STACK_NAME: $STACK_NAME"
-      echo "NORMALIZED_STACK_NAME: $NORMALIZED_STACK_NAME"
-
-      # Kontroll: maxlängd 63 tecken
-      if [ ${#NORMALIZED_STACK_NAME} -gt 63 ]; then
-        echo "ERROR: Stack name '$NORMALIZED_STACK_NAME' är ${#NORMALIZED_STACK_NAME} tecken långt (max 63 tillåtet)"
-        exit 1
-      fi
 
       echo "Genererar deploybar docker-compose..."
       envsubst < docker-compose.yml > deployable-compose.yml
       cat deployable-compose.yml
+
+      echo "Loggar in i Portainer..."
+      export PORTAINER_TOKEN=$(curl -s -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
+        --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
+        | jq -r '.jwt')
 
       echo "Hämtar endpoint och swarm info..."
       export ENDPOINT_ID=$(curl -sSL \
@@ -269,6 +265,7 @@ deploy_review:
       fi
 
 
+
 #############################################
 # 4.5) Kör migreringar före deploy till main
 #############################################
@@ -296,7 +293,6 @@ deploy_review:
 deploy_main:
   stage: deploy
   image: "$CI_REGISTRY_IMAGE/utils:latest"
-  #needs: [migrate_main]
   environment:
     name: "production"
     url: "https://vibedrop-backend.cc25.chasacademy.dev"
@@ -305,44 +301,37 @@ deploy_main:
   script:
     - |
       set -e
-      # Logga in i Portainer
+
+      export STACK_NAME="vdbe-main"
+      export NORMALIZED_STACK_NAME="$STACK_NAME"
+      export CI_ENVIRONMENT_SLUG="$STACK_NAME"
+      export DOCKER_TAG="latest"
+
+      echo "STACK: $STACK_NAME"
+
+      echo "Genererar docker-compose med envsubst..."
+      envsubst < docker-compose.yml > deployable-compose.yml
+      cat deployable-compose.yml
+
       export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
         --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
         | jq -r '.jwt')
 
-      # Bygg stack-namn
-      export STACK_NAME="$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
-      export NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
-
-      # För main => hårdkoda domain + Docker-tag
-      export CI_ENVIRONMENT_SLUG="vibedrop-backend"
-      export DOCKER_TAG="latest"
-      echo "STACK: $STACK_NAME"
-      echo "NORMALIZED_STACK_NAME: $NORMALIZED_STACK_NAME"
-      echo "CI_ENVIRONMENT_SLUG: $CI_ENVIRONMENT_SLUG"
-      echo "DOCKER_TAG: $DOCKER_TAG"
-
-      # Generera docker-compose
-      envsubst < docker-compose.yml > deployable-compose.yml
-      cat deployable-compose.yml
-
-      # Hämta endpoint & swarm
       export ENDPOINT_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Id')
+
       export SWARM_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
 
-      # Kolla om stack redan finns
       STACK_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/stacks \
         | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
 
-      # Skapa eller uppdatera
       if [ -z "$STACK_ID" ]; then
         echo "Skapar stack $NORMALIZED_STACK_NAME"
         curl -X POST \
@@ -364,6 +353,7 @@ deploy_main:
           | jq
       fi
 
+
 #############################################
 # 6) Teardown-job för att stoppa review
 #############################################
@@ -374,11 +364,8 @@ stop_review:
     name: "review-$CI_COMMIT_REF_NAME"
     action: stop
   rules:
-    # Kör manuellt via GitLab UI
     - if: $CI_MERGE_REQUEST_ID
       when: manual
-
-    # Kör automatiskt när MR stängs eller mergas
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_STATE == "merged"'
       when: always
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_STATE == "closed"'
@@ -386,29 +373,31 @@ stop_review:
   script:
     - |
       set -e
+      export STACK_PREFIX="vdbe"
+      export BRANCH_SLUG=$(echo "$CI_COMMIT_REF_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]-' | cut -c1-30)
+      export STACK_NAME="${STACK_PREFIX}-${BRANCH_SLUG}"
+      export NORMALIZED_STACK_NAME="$STACK_NAME"
+
       export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
         --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
         | jq -r '.jwt')
-      export STACK_NAME=$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME
-      echo "STACK: $STACK_NAME"
+
       export ENDPOINT_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/endpoints \
         | jq -r '.[] | select(.Name == "primary") | .Id')
-      echo "Endpoint: $ENDPOINT_ID"
-      NORMALIZED_STACK_NAME=$(echo "$STACK_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_-')
+
       echo "Kollar om stack $NORMALIZED_STACK_NAME finns..."
       STACK_ID=$(curl -sSL \
         -H "Authorization: Bearer $PORTAINER_TOKEN" \
         https://portainer.cc25.chasacademy.dev/api/stacks \
         | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
-      echo "Stack id: \"$STACK_ID\""
-      if [ -z "$STACK_ID" ]
-      then
-        echo "Stack $STACK_ID $STACK_NAME hittades inte!"
+
+      if [ -z "$STACK_ID" ]; then
+        echo "Stack $NORMALIZED_STACK_NAME hittades inte!"
         exit 1
       else 
-        echo "Tar bort stack $STACK_ID ($STACK_NAME)"
+        echo "Tar bort stack $STACK_ID ($NORMALIZED_STACK_NAME)"
         response=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
           "https://portainer.cc25.chasacademy.dev/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
           -H "Authorization: Bearer $PORTAINER_TOKEN")
@@ -419,4 +408,5 @@ stop_review:
           exit 1
         fi
       fi
+
 

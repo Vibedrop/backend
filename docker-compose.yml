@@ -25,14 +25,20 @@ services:
         - traefik.enable=true
         - traefik.docker.network=traefik-public
         - traefik.constraint-label=traefik-public
-        - traefik.http.routers.${NORMALIZED_STACK_NAME}-http.rule=Host(`${CI_ENVIRONMENT_SLUG}.cc25.chasacademy.dev`)
-        - traefik.http.routers.${NORMALIZED_STACK_NAME}-http.entrypoints=http
-        - traefik.http.routers.${NORMALIZED_STACK_NAME}-http.middlewares=https-redirect
-        - traefik.http.routers.${NORMALIZED_STACK_NAME}-https.rule=Host(`${CI_ENVIRONMENT_SLUG}.cc25.chasacademy.dev`)
-        - traefik.http.routers.${NORMALIZED_STACK_NAME}-https.entrypoints=https
-        - traefik.http.routers.${NORMALIZED_STACK_NAME}-https.tls=true
-        - traefik.http.routers.${NORMALIZED_STACK_NAME}-https.tls.certresolver=le
-        - traefik.http.services.${NORMALIZED_STACK_NAME}.loadbalancer.server.port=3000
+
+        # HTTP-router
+        - traefik.http.routers.${STACK_NAME}-http.rule=Host(`${STACK_NAME}.cc25.chasacademy.dev`)
+        - traefik.http.routers.${STACK_NAME}-http.entrypoints=http
+        - traefik.http.routers.${STACK_NAME}-http.middlewares=https-redirect
+
+        # HTTPS-router
+        - traefik.http.routers.${STACK_NAME}-https.rule=Host(`${STACK_NAME}.cc25.chasacademy.dev`)
+        - traefik.http.routers.${STACK_NAME}-https.entrypoints=https
+        - traefik.http.routers.${STACK_NAME}-https.tls=true
+        - traefik.http.routers.${STACK_NAME}-https.tls.certresolver=le
+
+        # Backend-service
+        - traefik.http.services.${STACK_NAME}.loadbalancer.server.port=3000
 
   vibedrop-infra-db:
     image: postgres:16-alpine
@@ -50,5 +56,3 @@ networks:
   traefik-public:
     external: true
   vibedrop-db:
-
-

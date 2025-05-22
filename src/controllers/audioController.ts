@@ -8,9 +8,8 @@ import * as musicMetadata from "music-metadata";
 
 export const uploadAudio = async (req: ProtectedRequest, res: Response) => {
     const userId = req.user?.id;
-    const { projectId } = req.params;
     const file = req.file as Express.Multer.File;
-    const { title, description } = req.body;
+    const { projectId } = req.params;
     const s3Key = nanoid(21);
 
     if (!userId) {
@@ -58,8 +57,7 @@ export const uploadAudio = async (req: ProtectedRequest, res: Response) => {
 
         const newAudioFile = await prisma.audioFile.create({
             data: {
-                name: title,
-                description: description,
+                name: file.originalname,
                 s3Key: s3Key,
                 projectId: projectId,
                 duration: duration,

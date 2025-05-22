@@ -28,12 +28,10 @@ model Project {
   ownerId      String
   audioFiles   AudioFile[]
   collaborators Collaborator[]
-  deadline    DateTime?
 }
 model AudioFile {
   id        String   @id @default(cuid())
   name      String
-  description String?
   s3Key     String   @unique
   duration    Int?     // Sekunder
   isChecked Boolean  @default(false) // För framtida markering

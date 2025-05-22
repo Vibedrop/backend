@@ -302,7 +302,7 @@ deploy_main:
     - |
       set -e
 
-      export STACK_NAME="vdbe-main"
+      export STACK_NAME="vibedrop-backend"
       export NORMALIZED_STACK_NAME="$STACK_NAME"
       export CI_ENVIRONMENT_SLUG="$STACK_NAME"
       export DOCKER_TAG="latest"

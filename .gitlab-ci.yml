@@ -216,6 +216,13 @@ deploy_review:
       export CI_ENVIRONMENT_SLUG="$STACK_NAME"
       export DOCKER_TAG="$CI_COMMIT_REF_NAME"
 
+      export MAX_SERVICE_NAME="${STACK_NAME}_vibedrop-infra-db"
+      if [ ${#MAX_SERVICE_NAME} -gt 63 ]; then
+        echo "Fel: ${#MAX_SERVICE_NAME} tecken långt -- maxgräns 63."
+        echo "Branch-namnet är för långt för att generera en giltig stack."
+        exit 1
+      fi
+
       echo "STACK_NAME: $STACK_NAME"
 
       echo "Genererar deploybar docker-compose..."

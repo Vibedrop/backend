@@ -91,19 +91,38 @@ export const getSignedUrl = async (req: ProtectedRequest, res: Response) => {
             return;
         }
 
+        // const project = await prisma.project.findUnique({
+        //     where: { id: audioFile?.projectId },
+        // });
+        // if (!project) {
+        //     res.status(404).json({ message: "Project not found" });
+        //     return;
+        // }
+
+
+
+
         const project = await prisma.project.findUnique({
-            where: { id: audioFile?.projectId },
+            where: { id: projectId },
+            include: { collaborators: true },
         });
         if (!project) {
             res.status(404).json({ message: "Project not found" });
             return;
         }
-        if (project.ownerId !== userId) {
+
+        const isOwner = project.ownerId === userId;
+        const isCollaborator = project.collaborators.some(
+            (collab) => collab.userId === userId
+        );
+
+        if (!isOwner && !isCollaborator) {
             res.status(403).json({
                 message: "Not allowed to access this project",
             });
             return;
         }
+
         if (project.id !== projectId) {
             res.status(400).json({
                 message: "Request does not match current project",
@@ -192,7 +211,7 @@ export async function getAudioFile(req: ProtectedRequest, res: Response) {
     }
     const project = await prisma.audioFile.findMany({
         where: {
-            id: parsedProject.data.projectId,
+            projectId: parsedProject.data.projectId,
         },
     });
     res.status(200).json(project);

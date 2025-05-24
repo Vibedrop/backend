@@ -5,10 +5,9 @@ import {
     getSignedUrl,
     getSignedUrls,
     getAudioFile,
+    deleteAudioFile,
 } from "../controllers/audioController";
 import multer from "multer";
-import Upload from "../middleware/multer";
-import { s3 } from "../utilities/s3";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -20,5 +19,7 @@ router.get("/:projectId/:s3Key", authMiddleware, getSignedUrl);
 router.get("/:projectId", authMiddleware, getSignedUrls);
 // TODO: Delete audio file
 router.post("/:fileId", authMiddleware, getAudioFile);
+
+router.delete("/:projectId/:audioFileId", authMiddleware, deleteAudioFile);
 
 export default router;

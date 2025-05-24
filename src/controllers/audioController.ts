@@ -99,9 +99,6 @@ export const getSignedUrl = async (req: ProtectedRequest, res: Response) => {
         //     return;
         // }
 
-
-
-
         const project = await prisma.project.findUnique({
             where: { id: projectId },
             include: { collaborators: true },
@@ -113,7 +110,7 @@ export const getSignedUrl = async (req: ProtectedRequest, res: Response) => {
 
         const isOwner = project.ownerId === userId;
         const isCollaborator = project.collaborators.some(
-            (collab) => collab.userId === userId
+            collab => collab.userId === userId,
         );
 
         if (!isOwner && !isCollaborator) {
@@ -216,3 +213,62 @@ export async function getAudioFile(req: ProtectedRequest, res: Response) {
     });
     res.status(200).json(project);
 }
+
+export const deleteAudioFile = async (req: ProtectedRequest, res: Response) => {
+    const userId = req.user?.id;
+    const { projectId, audioFileId } = req.params;
+
+    if (!userId) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    try {
+        const audioFile = await prisma.audioFile.findUnique({
+            where: { id: audioFileId },
+        });
+
+        if (!audioFile) {
+            res.status(404).json({ message: "Audio file not found" });
+            return;
+        }
+
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+        });
+
+        if (!project || project.ownerId !== userId) {
+            res.status(403).json({
+                message: "Not authorized to delete this audio file",
+            });
+            return;
+        }
+
+        const path = `${project.name}/${audioFile.s3Key}`;
+
+        // Radera från Supabase Storage
+        const { error: storageError } = await supabase.storage
+            .from(process.env.SUPABASE_BUCKET_NAME as string)
+            .remove([path]);
+
+        if (storageError) {
+            console.error("Supabase deletion error:", storageError);
+            res.status(500).json({
+                message: "Failed to delete audio from storage",
+            });
+            return;
+        }
+
+        // Radera från databasen
+        await prisma.audioFile.delete({
+            where: { id: audioFileId },
+        });
+
+        res.status(200).json({ message: "Audio file deleted successfully" });
+        return;
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error deleting audio file" });
+        return;
+    }
+};

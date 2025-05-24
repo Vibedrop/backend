@@ -80,3 +80,34 @@ export const deleteUser = async (req: ProtectedRequest, res: Response) => {
         return;
     }
 };
+
+export const changeUserName = async (req: ProtectedRequest, res: Response) => {
+    try {
+        // Get user from JWT
+        const username = req.body.username;
+        const userId = req.user?.id;
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+
+        if (!user) {
+            res.status(404).json({
+                message: "User not found. Cannot delete non-existent user.",
+            });
+            return;
+        }
+        const updatedItem = await prisma.user.update({
+            where: {
+                id: userId,
+            },
+            data: {
+                username: username,
+            },
+        });
+
+        res.status(200).json(updatedItem);
+        return;
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Error deleting user." });
+        return;
+    }
+};

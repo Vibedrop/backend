@@ -1,68 +1,88 @@
 generator client {
     provider = "prisma-client-js"
 }
+
 datasource db {
     provider = "postgresql"
     url      = env("DATABASE_URL")
 }
+
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  username      String         @unique
-  password      String
-  emailVerified Boolean        @default(true)// verification later
-  createdAt     DateTime       @default(now())
-  ownedProjects Project[]      @relation("ProjectOwner")
-  collaborations Collaborator[]
-  comments      Comment[]
-}
-model Project {
-  id           String         @id @default(cuid())
-  name         String
-  description  String?
-  isPublic     Boolean        @default(false)
-  createdAt    DateTime       @default(now())
-  maxFileSize  Int            @default(100) // MB
-  maxFiles     Int            @default(10)  // Max antal filer per projekt
-  owner        User           @relation("ProjectOwner",fields: [ownerId], references: [id], onDelete: Cascade)
-  ownerId      String
-  audioFiles   AudioFile[]
-  collaborators Collaborator[]
-  deadline    DateTime?
-}
-model AudioFile {
-  id        String   @id @default(cuid())
-  name      String
-  description String?
-  s3Key     String   @unique
-  duration    Int?     // Sekunder
-  isChecked Boolean  @default(false) // För framtida markering
-  createdAt DateTime @default(now())
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId String
-  comments  Comment[]
-}
-model Comment {
-  id        String   @id @default(cuid())
-  content   String
-  timestamp Int? // För ljudfiler (sekunder)
-  createdAt DateTime @default(now())
-  audioFile     AudioFile     @relation(fields: [fileId], references: [id], onDelete: Cascade)
-  fileId    String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  authorId  String
-  @@index([fileId])
-}
-model Collaborator {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId String
-  @@unique([userId, projectId])
-  @@index([projectId])
+    id               String             @id @default(cuid())
+    email            String             @unique
+    username         String             @unique
+    password         String
+    emailVerified    Boolean            @default(true) // verification later
+    createdAt        DateTime           @default(now())
+    ownedProjects    Project[]          @relation("ProjectOwner")
+    collaborations   Collaborator[]
+    comments         Comment[]
+    CommentsLastRead CommentsLastRead[]
 }
 
+model Project {
+    id            String         @id @default(cuid())
+    name          String
+    description   String?
+    isPublic      Boolean        @default(false)
+    createdAt     DateTime       @default(now())
+    maxFileSize   Int            @default(100) // MB
+    maxFiles      Int            @default(10) // Max antal filer per projekt
+    owner         User           @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+    ownerId       String
+    audioFiles    AudioFile[]
+    collaborators Collaborator[]
+    deadline      DateTime?
+}
+
+model AudioFile {
+    id               String             @id @default(cuid())
+    name             String
+    description      String?
+    s3Key            String             @unique
+    duration         Int? // Sekunder
+    isChecked        Boolean            @default(false) // För framtida markering
+    createdAt        DateTime           @default(now())
+    project          Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+    projectId        String
+    comments         Comment[]
+    CommentsLastRead CommentsLastRead[]
+}
+
+model Comment {
+    id        String    @id @default(cuid())
+    content   String
+    timestamp Int? // För ljudfiler (sekunder)
+    createdAt DateTime  @default(now())
+    audioFile AudioFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+    fileId    String
+    author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+    authorId  String
+
+    @@index([fileId])
+}
+
+model Collaborator {
+    id        String   @id @default(cuid())
+    createdAt DateTime @default(now())
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId    String
+    project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+    projectId String
+
+    @@unique([userId, projectId])
+    @@index([projectId])
+}
+
+model CommentsLastRead {
+    id          String    @id @default(cuid())
+    user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId      String
+    lastReadAt  DateTime  @default(now())
+    audioFile   AudioFile @relation(fields: [audioFileId], references: [id], onDelete: Cascade)
+    audioFileId String
+
+    @@unique([userId, audioFileId])
+}
 
 // test pipeline

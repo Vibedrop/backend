@@ -3,6 +3,48 @@ import { prisma } from "../utilities/prisma";
 import { ProtectedRequest } from "../middleware/authMiddleware";
 import { z } from "zod";
 
+export async function updateLastReadAt(req: ProtectedRequest, res: Response) {
+    const user = req.user;
+
+    if (!user) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    const parsedParams = z
+        .object({
+            fileID: z.string(),
+        })
+        .safeParse(req.params);
+
+    if (!parsedParams.success) {
+        res.status(400).json({
+            message: "Bad request",
+        });
+        return;
+    }
+
+    try {
+        await prisma.commentsLastRead.update({
+            where: {
+                userId_audioFileId: {
+                    userId: user.id,
+                    audioFileId: parsedParams.data.fileID,
+                },
+            },
+            data: {
+                lastReadAt: new Date(),
+            },
+        });
+
+        res.status(200).json({
+            message: "Last read time updated successfully",
+        });
+    } catch {
+        res.status(500).json({ message: "Internal server error" });
+    }
+}
+
 export const getComment = async (req: ProtectedRequest, res: Response) => {
     const parsedFileId = z
         .object({
@@ -24,7 +66,19 @@ export const getComment = async (req: ProtectedRequest, res: Response) => {
             },
         });
 
-        res.status(201).json(comments);
+        const lastRead = await prisma.commentsLastRead.findUnique({
+            where: {
+                userId_audioFileId: {
+                    userId: req.user?.id,
+                    audioFileId: parsedFileId.data.fileid,
+                },
+            },
+        });
+
+        res.status(201).json({
+            comments,
+            lastReadAt: lastRead?.lastReadAt || new Date(0),
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error finding comment" });
@@ -104,8 +158,8 @@ export const deleteComment = async (req: ProtectedRequest, res: Response) => {
             where: { id: commentId },
             select: {
                 id: true,
-                authorId: true 
-            }
+                authorId: true,
+            },
         });
 
         if (!comment) {
@@ -115,8 +169,8 @@ export const deleteComment = async (req: ProtectedRequest, res: Response) => {
 
         // endast kommentarens författare
         if (comment.authorId !== userId) {
-            res.status(403).json({ 
-                message: "Only the comment author can delete this comment" 
+            res.status(403).json({
+                message: "Only the comment author can delete this comment",
             });
             return;
         }

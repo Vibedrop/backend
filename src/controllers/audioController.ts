@@ -26,6 +26,7 @@ export const uploadAudio = async (req: ProtectedRequest, res: Response) => {
     try {
         const project = await prisma.project.findUnique({
             where: { id: projectId },
+            include: { collaborators: true },
         });
         if (!project) {
             res.status(404).json({ message: "Project not found" });
@@ -65,6 +66,26 @@ export const uploadAudio = async (req: ProtectedRequest, res: Response) => {
                 duration: duration,
             },
         });
+
+        //Add commentslastread per collaborator and owner
+
+        const commentsLastReadData = project.collaborators.map(
+            collaborator => ({
+                userId: collaborator.userId,
+                audioFileId: newAudioFile.id,
+            }),
+        );
+
+        try {
+            await prisma.commentsLastRead.createMany({
+                data: [
+                    ...commentsLastReadData,
+                    { userId: project.ownerId, audioFileId: newAudioFile.id },
+                ],
+            });
+        } catch {
+            console.error("Error creating commentsLastRead entries");
+        }
 
         res.status(201).json(newAudioFile);
     } catch (error) {

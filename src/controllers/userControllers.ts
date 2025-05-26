@@ -1,6 +1,9 @@
 import type { Request, Response } from "express";
 import type { ProtectedRequest } from "../middleware/authMiddleware";
 import { prisma } from "../utilities/prisma";
+import bcrypt from "bcryptjs";
+
+const SALT_ROUNDS = 10;
 
 export function getUser(req: Request, res: Response) {
     res.status(200).json("getUser");
@@ -81,9 +84,8 @@ export const deleteUser = async (req: ProtectedRequest, res: Response) => {
     }
 };
 
-export const changeUserName = async (req: ProtectedRequest, res: Response) => {
+export const changeUsername = async (req: ProtectedRequest, res: Response) => {
     try {
-        // Get user from JWT
         const username = req.body.username;
         const userId = req.user?.id;
         const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -107,7 +109,46 @@ export const changeUserName = async (req: ProtectedRequest, res: Response) => {
         return;
     } catch (err) {
         console.error(err);
-        res.status(500).json({ message: "Error deleting user." });
+        res.status(500).json({ message: "Error changing name." });
+        return;
+    }
+};
+
+export const changePassword = async (req: ProtectedRequest, res: Response) => {
+    try {
+        // Get user from JWT
+        const password = req.body.password;
+        const userId = req.user?.id;
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+
+        if (!user) {
+            res.status(404).json({
+                message: "User not found. Cannot delete non-existent user.",
+            });
+            return;
+
+        }
+        const isPasswordCompare = await bcrypt.compare(password, user.password);
+        if(isPasswordCompare) {
+            res.status(200).json({ message: "Same Password" });
+            return
+        }
+
+        const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+        await prisma.user.update({
+            where: {
+                id: userId,
+            },
+            data: {
+                password: hashedPassword,
+            },
+        });
+
+        res.status(200).json({ message: "Successfully changed password" });
+        return;
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Error changing password." });
         return;
     }
 };

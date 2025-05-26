@@ -4,12 +4,14 @@ import {
     getUser,
     getUserProfile,
     deleteUser,
-    changeUserName,
+    changeUsername,
+    changePassword
 } from "../controllers/userControllers";
 
 const router = Router();
 
-router.post("/:userId", authMiddleware, changeUserName);
+router.post("/:userId/username", authMiddleware, changeUsername);
+router.post("/:userId/password", authMiddleware, changePassword);
 router.get("/", authMiddleware, getUser);
 router.get("/me", authMiddleware, getUserProfile);
 // TODO: Add update user route

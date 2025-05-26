@@ -17,8 +17,14 @@ export const addCollaborator = async (req: ProtectedRequest, res: Response) => {
             where: { email: email },
         });
 
+
         if (Usercollaborator === null) {
             res.status(403).json({ message: "Cant find the user" });
+            return;
+        }
+
+        if (Usercollaborator.id === userId) {
+            res.status(400).json({ message: "You cannot invite yourself to your own project"});
             return;
         }
 

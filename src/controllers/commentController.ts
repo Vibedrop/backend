@@ -61,8 +61,21 @@ export const getComment = async (req: ProtectedRequest, res: Response) => {
     try {
         const comments = await prisma.comment.findMany({
             where: { fileId: parsedFileId.data.fileid },
-            include: {
-                author: true,
+            select: {
+                id: true,
+                content: true,
+                timestamp: true,
+                fileId: true,
+                createdAt: true,
+                author: {
+                    select: {
+                        id: true,
+                        email: true,
+                        username: true,
+                        emailVerified: true,
+                        createdAt: true,
+                    },
+                },
             },
         });
 
@@ -97,6 +110,11 @@ export const addComment = async (req: ProtectedRequest, res: Response) => {
 
     if (!userId) {
         res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    if (!parsedComment.success) {
+        res.status(400).json({ message: "Bad request" });
         return;
     }
 
@@ -135,6 +153,22 @@ export const addComment = async (req: ProtectedRequest, res: Response) => {
                 fileId,
                 authorId: userId,
             },
+            select: {
+                id: true,
+                content: true,
+                timestamp: true,
+                fileId: true,
+                createdAt: true,
+                author: {
+                    select: {
+                        id: true,
+                        email: true,
+                        username: true,
+                        emailVerified: true,
+                        createdAt: true,
+                    },
+                },
+            },
         });
 
         res.status(201).json(comment);
@@ -167,7 +201,6 @@ export const deleteComment = async (req: ProtectedRequest, res: Response) => {
             return;
         }
 
-        // endast kommentarens författare
         if (comment.authorId !== userId) {
             res.status(403).json({
                 message: "Only the comment author can delete this comment",

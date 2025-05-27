@@ -30,10 +30,10 @@ export async function authMiddleware(
     try {
         const decoded = jwt.verify(token, JWT_SECRET as string) as JwtPayload;
         req.user = decoded;
-        // console.log("Req user: ", req.user);
+        
         next();
     } catch {
-        // console.log(err);
+        
         res.status(401).json({
             message: "Unauthorized request. Invalid token.",
         });

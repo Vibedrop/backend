@@ -74,7 +74,7 @@ router.get("/s3", async (req, res) => {
                 expiresIn: 60 * 10, // 10 minutes
             });
 
-            console.log("testRoutes GET data.contents", data.Contents);
+        
 
             return {
                 key: item.Key,
@@ -110,7 +110,6 @@ router.get("/s3/:key", async (req, res) => {
 
 router.post("/s3", upload.single("file"), async (req, res) => {
     const file = req.file;
-    console.log("req.file testRoutes", file);
 
     if (!file) {
         res.status(400).json({ error: "No file uploaded" });

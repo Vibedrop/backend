@@ -45,8 +45,7 @@ export async function createProject(req: ProtectedRequest, res: Response) {
         });
 
         res.status(201).json(project);
-    } catch (e) {
-        console.log(e);
+    } catch {
         res.status(500).json({
             message: "Internal server error",
         });

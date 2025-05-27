@@ -44,7 +44,7 @@ export const uploadAudio = async (req: ProtectedRequest, res: Response) => {
             file.mimetype,
         );
         const duration = metadata.format.duration; // In seconds
-        console.log("duration", duration);
+    
 
         const path = `${projectId}/${s3Key}`;
 

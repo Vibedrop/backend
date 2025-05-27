@@ -16,7 +16,6 @@ export async function signUp(req: Request, res: Response) {
         })
         .safeParse(req.body);
 
-    console.log("signUpBody", req.body);
 
     if (!signUpBody.success) {
         res.status(400).json({

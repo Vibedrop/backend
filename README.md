@@ -1,81 +1,109 @@
+# [Live version](https://vibedrop-backend.cc25.chasacademy.dev/)
 
-# [Latest Deployment](https://vibedrop-backend.cc25.chasacademy.dev/)
+# Vibedrop Backend – Användarguide
 
-# Arbetsflöde för Vibedrop
+Den här guiden hjälper dig att installera, konfigurera och köra backend för Vibedrop. Den täcker även arbetsflöde, miljövariabler och vanliga kommandon.
 
-All kod ändras via Merge Requests (MR).
-Direktpush eller force-push till main är förbjudet.
+## Innehåll
+- [Förutsättningar](#förutsättningar)
+- [Installation](#installation)
+- [Miljövariabler (.env)](#miljovariabler-env)
+- [Utvecklingsläge](#utvecklingsläge)
+- [Bygga och köra i produktion](#bygga-och-kora-i-produktion)
+- [Struktur och viktiga mappar](#struktur-och-viktiga-mappar)
+- [Användbara npm-skript](#anvandbara-npm-skript)
+- [Felsökning](#felsokning)
+- [Ytterligare dokumentation](#ytterligare-dokumentation)
 
-Endast MR kan ändra main, så håll koden ren.
-Om du märker att .gitignore saknar något, meddela eller lägg till en ändring via en egen branch.
+## Förutsättningar
 
-#### 1.a Klona BACKEND repot - ssh
-```
-git clone git@git.chasacademy.dev:chas-challenge-2025/vibedrop/backend.git
-```
-#### 1.b Klona BACKEND repot - https
-```
-git clone https://git.chasacademy.dev/chas-challenge-2025/vibedrop/backend.git
-```
+- Node.js (rekommenderad version: 18.x eller senare)
+- npm (medföljer Node.js)
+- Git
+- PostgreSQL-databas
 
-#### 2. Skapa en ny branch
-Skapa en branch från main med ett beskrivande namn på din feature - OBS: Max 30 tecken långt.
+## Installation
+
+1. Klona repot:
+   ```bash
+   git clone https://git.chasacademy.dev/chas-challenge-2025/vibedrop/backend.git
+   ```
+2. Gå in i projektmappen:
+   ```bash
+   cd backend
+   ```
+3. Installera beroenden:
+   ```bash
+   npm install
+   ```
+
+## Miljövariabler (.env)
+
+1. Skapa en `.env`-fil i `backend`-mappen.
+2. Lägg till variablerna enligt exemplet nedan.
 Exempel:
-```
-git checkout -b ny-feature
-```
+   ```env
+   DATABASE_URL=
+   JWT_SECRET=
+   SUPABASE_BUCKET_NAME=
+   SUPABASE_URL=
+   SUPABASE_SERVICE_ROLE_KEY=
+   ```
+3. Spara filen. Miljövariabler används för databas, autentisering, tredjepartstjänster m.m.
 
-#### 3. Utveckla och testa lokalt
+## Utvecklingsläge
 
-Gör dina ändringar i din feature‑branch.
-Kör lokala tester (t.ex. npm run dev) för att säkerställa att allt fungerar. ??
+> **Viktigt:** Backend måste alltid köras på port 3000 för att frontend och andra tjänster ska kunna kommunicera korrekt!
 
-#### 4. Pusha din branch och skapa en Merge Request
+Starta utvecklingsservern:
+```bash
+npm run dev
 ```
-git push -u origin ny-feature
-```
-Skapa en Merge Request i GitLab WebGUI från din branch mot main.
-Välj om du vill att någon annan ska granska din kod innan den godkänns.
-Markera MR:n som "Draft" tills din funktion är klar.
-Välj alternativen SQUASH COMMITS och DELETE SOURCE BRANCH för att hålla historiken ren.
+- Servern körs på [http://localhost:3000](http://localhost:3000) om inget annat anges i `.env`.
+- Koden laddas om automatiskt vid ändringar (via nodemon).
 
-#### 5. CI/CD Pipeline och Review Environment
+## Bygga och köra i produktion
 
-När MR:n skapas startas pipelinen automatiskt. Den gör följande:
-Bygger din kod och skapar en Docker‑image.
-Deployar en temporär review‑environment, t.ex. https://review-ny-feature.cc25.chasacademy.dev, där du kan se dina ändringar live.
-I MR:n finns länk till testmiljön under Operate->Environments
-
-#### 6. Granskning och Merge
-
-Om allt fungerar, ändra MR:n från "Draft" till klar och mergea den till main.
-Vid merge tas den temporära review‑miljön automatiskt ner, och production‑miljön deployas med den nya koden från din branch.
-
-## 7. Git-kommandon
-
-Din bästa vän!
+Bygg projektet:
+```bash
+npm run build
 ```
-git status
-```
-Visa alla branches, MR's och commits i CLI
-```
-git log --oneline --graph --decorate --all
-```
-Visa ändringsdetaljer
-```
-git log -p
-```
-Visa vem som ändrat varje rad i en fil
-```
-git blame <sökväg+filnamn>
-exempel: git blame src/app/SignIn/page.tsx 
+Starta produktionen:
+```bash
+npm start
 ```
 
+## Struktur och viktiga mappar
 
-#### Använd Rebase kontinuerligt om du arbetar på en branch länge för att inte hamna för långt efter de andra som kör sina egna branches emot main.
+- `src/` – All källkod för backend.
+  - `controllers/` – API-logik och endpoints.
+  - `middleware/` – Express-middleware för autentisering, validering m.m.
+  - `routes/` – API-routes.
+  - `utilities/` – Hjälpfunktioner och externa integrationer.
+- `prisma/` – Prisma schema och migrationer.
 
-Mer info om Rebase finns här:
+## Användbara npm-skript
 
-[Atlassin Guide](https://www.atlassian.com/git/tutorials/rewriting-history/git-rebase)
+- `npm run dev` – Startar utvecklingsservern med nodemon.
+- `npm run build` – Bygger TypeScript till JavaScript.
+- `npm start` – Startar den byggda appen i produktionsläge.
+- `npm run lint` – Kör ESLint för att hitta kodproblem.
+- `npm run prisma` – Prisma CLI-kommandon (t.ex. migrationer).
 
-[Youtube-genomgång](https://www.youtube.com/watch?v=f1wnYdLEpgI)
+## Felsökning
+
+- Kontrollera att `.env`-filen är korrekt ifylld.
+- Kontrollera att alla beroenden är installerade (`npm install`).
+- Kontrollera att databasen är igång och att `DATABASE_URL` stämmer.
+- Läs konsolens felmeddelanden för mer information.
+- Vid problem med Prisma, testa:
+  ```bash
+  npx prisma generate
+  npx prisma migrate dev
+  ```
+
+## Ytterligare dokumentation
+
+- [Express.js Docs](https://expressjs.com/)
+- [Prisma Docs](https://www.prisma.io/docs/)
+- [Chas Academy GitLab](https://git.chasacademy.dev/chas-challenge-2025/vibedrop/backend)

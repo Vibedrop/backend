@@ -1,12 +1,14 @@
 import type { NextFunction, Request, Response } from "express";
 import jwt, { type JwtPayload } from "jsonwebtoken";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 export interface ProtectedRequest extends Request {
     user?: JwtPayload;
 }
 
-// TODO: Move JWT_SECRET to a .env file
-const JWT_SECRET = "vibedrop";
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 export async function authMiddleware(
     req: ProtectedRequest,
@@ -30,10 +32,9 @@ export async function authMiddleware(
     try {
         const decoded = jwt.verify(token, JWT_SECRET as string) as JwtPayload;
         req.user = decoded;
-        
+
         next();
     } catch {
-        
         res.status(401).json({
             message: "Unauthorized request. Invalid token.",
         });

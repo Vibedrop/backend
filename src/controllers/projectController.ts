@@ -25,6 +25,7 @@ export async function createProject(req: ProtectedRequest, res: Response) {
         .object({
             name: z.string().min(1),
             description: z.string().min(1),
+            deadline: z.string(),
         })
         .safeParse(req.body);
 
@@ -35,12 +36,16 @@ export async function createProject(req: ProtectedRequest, res: Response) {
         return;
     }
 
+    const deadline =
+        parsedBody.data.deadline !== "" ? parsedBody.data.deadline : null;
+
     try {
         const project = await prisma.project.create({
             data: {
                 name: parsedBody.data.name,
                 description: parsedBody.data.description,
                 ownerId: parsedUser.data.id,
+                deadline: deadline,
             },
         });
 

@@ -1,698 +1,785 @@
 openapi: 3.0.0
 info:
-    title: Express API
-    version: 0.0.0
-    description: API documentation for your Express app
-components:
-    securitySchemes:
-        bearerAuth:
-            type: http
-            scheme: bearer
-            bearerFormat: JWT
+  title: Express API
+  version: 0.0.0
+  description: API documentation for your Express app
 servers:
-    - url: http://localhost:8080
+  - url: http://localhost:3000
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 paths:
-    /users:
-        post:
-            summary: Create a new user
-            requestBody:
-                description: User object that needs to be added
-                required: true
-                content:
-                    application/json:
-                        schema:
-                            type: object
-                            properties:
-                                email:
-                                    type: string
-                                password:
-                                    type: string
-            responses:
-                "201":
-                    description: User created successfully
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    userId:
-                                        type: string
-                "400":
-                    description: Bad request
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-    /users/{userId}/projects:
-        get:
-            security:
-                - bearerAuth: []
-            summary: Get all projects for a user
-            parameters:
-                - name: userId
-                  in: path
-                  required: true
-                  description: ID of the user to retrieve projects for
-                  schema:
+  /auth/sign-in:
+    post:
+      summary: Login a user
+      requestBody:
+        description: User credentials for login
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /auth/sign-up:
+    post:
+      summary: Register a new user
+      requestBody:
+        description: User object that needs to be registered
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId:
+                    type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /auth/sign-out:
+    post:
+      security:
+        - bearerAuth: []
+      summary: Logout a user
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /users:
+    get:
+      security:
+        - bearerAuth: []
+      summary: Get all users
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
                       type: string
-            responses:
-                "200":
-                    description: Projects retrieved successfully
-                    content:
-                        application/json:
-                            schema:
-                                type: array
-                                items:
-                                    type: object
-                                    properties:
-                                        projectId:
-                                            type: string
-                                        name:
-                                            type: string
-                                        description:
-                                            type: string
-                "404":
-                    description: User not found
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "500":
-                    description: Internal server error
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-    /projects/{projectId}:
-        get:
-            security:
-                - bearerAuth: []
-            summary: Get a project by ID
-            parameters:
-                - name: projectId
-                  in: path
-                  required: true
-                  description: ID of the project to retrieve
-                  schema:
+                    email:
                       type: string
-            responses:
-                "200":
-                    description: Project retrieved successfully
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    projectId:
-                                        type: string
-                                    name:
-                                        type: string
-                                    description:
-                                        type: string
-                "400":
-                    description: Bad request
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "401":
-                    description: Unauthorized
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "404":
-                    description: Project not found
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-        post:
-            security:
-                - bearerAuth: []
-            summary: Create a new project
-            requestBody:
-                description: Project object that needs to be added
-                required: true
-                content:
-                    application/json:
-                        schema:
-                            type: object
-                            properties:
-                                id:
-                                    type: string
-                                name:
-                                    type: string
-                                description:
-                                    type: string
-            responses:
-                "201":
-                    description: Project created successfully
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    projectId:
-                                        type: string
-                "400":
-                    description: Bad request
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "404":
-                    description: Project not found
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "500":
-                    description: internal server error
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-    /projects/{projectId}/files:
-        get:
-            security:
-                - bearerAuth: []
-            summary: Get all files for a project
-            parameters:
-                - name: projectId
-                  in: path
-                  required: true
-                  description: ID of the project to retrieve files for
-                  schema:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /users/me:
+    get:
+      security:
+        - bearerAuth: []
+      summary: Get current user profile
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  email:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+    delete:
+      security:
+        - bearerAuth: []
+      summary: Delete current user
+      responses:
+        '200':
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /users/{userId}/username:
+    post:
+      security:
+        - bearerAuth: []
+      summary: Change username
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+      responses:
+        '200':
+          description: Username changed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /users/{userId}/password:
+    post:
+      security:
+        - bearerAuth: []
+      summary: Change password
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /projects:
+    post:
+      security:
+        - bearerAuth: []
+      summary: Create a new project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projectId:
+                    type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /projects/{projectId}:
+    post:
+      security:
+        - bearerAuth: []
+      summary: Get a project by ID
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projectId:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type: string
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+    delete:
+      security:
+        - bearerAuth: []
+      summary: Delete a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /audio/{projectId}:
+    get:
+      security:
+        - bearerAuth: []
+      summary: Get all audio files for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Audio files retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    fileId:
                       type: string
-            responses:
-                "200":
-                    description: Files retrieved successfully
-                    content:
-                        application/json:
-                            schema:
-                                type: array
-                                items:
-                                    type: object
-                                    properties:
-                                        fileId:
-                                            type: string
-                                        name:
-                                            type: string
-                                        size:
-                                            type: integer
-                "404":
-                    description: Project not found
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "500":
-                    description: Internal server error
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-        post:
-            security:
-                - bearerAuth: []
-            summary: Upload a new file
-            requestBody:
-                description: File object that needs to be uploaded
-                required: true
-                content:
-                    multipart/form-data:
-                        schema:
-                            type: object
-                            properties:
-                                file:
-                                    type: string
-                                    format: binary
-            responses:
-                "201":
-                    description: File uploaded successfully
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    fileId:
-                                        type: string
-                "400":
-                    description: Bad request
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "500":
-                    description: Internal server error
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-    /projects/{projectId}/collaborators:
-        get:
-            security:
-                - bearerAuth: []
-            summary: Get all collaborators for a project
-            parameters:
-                - name: projectId
-                  in: path
-                  required: true
-                  description: ID of the project to retrieve collaborators for
-                  schema:
+                    name:
                       type: string
-            responses:
-                "200":
-                    description: Collaborators retrieved successfully
-                    content:
-                        application/json:
-                            schema:
-                                type: array
-                                items:
-                                    type: object
-                                    properties:
-                                        userId:
-                                            type: string
-                                        name:
-                                            type: string
-                                        email:
-                                            type: string
-                "404":
-                    description: Project not found
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "500":
-                    description: Internal server error
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-        post:
-            security:
-                - bearerAuth: []
-            summary: Add a collaborator to a project
-            requestBody:
-                description: Collaborator object that needs to be added
-                required: true
-                content:
-                    application/json:
-                        schema:
-                            type: object
-                            properties:
-                                userId:
-                                    type: string
-                                projectId:
-                                    type: string
-            responses:
-                "201":
-                    description: Collaborator added successfully
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    collaboratorId:
-                                        type: string
-                "400":
-                    description: Bad request
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "404":
-                    description: Project not found
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "500":
-                    description: Internal server error
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-        delete:
-            security:
-                - bearerAuth: []
-            summary: Remove a collaborator from a project
-            parameters:
-                - name: userId
-                  in: path
-                  required: true
-                  description: ID of the user to remove
-                  schema:
+                    url:
                       type: string
-                - name: projectId
-                  in: path
-                  required: true
-                  description: ID of the project to remove the collaborator from
-                  schema:
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+    post:
+      security:
+        - bearerAuth: []
+      summary: Upload audio file to project
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Audio uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fileId:
+                    type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /audio/{projectId}/{s3Key}:
+    get:
+      security:
+        - bearerAuth: []
+      summary: Get signed URL for audio file
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: s3Key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Signed URL retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /audio/{fileId}:
+    post:
+      security:
+        - bearerAuth: []
+      summary: Get audio file by fileId
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Audio file retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fileId:
+                    type: string
+                  name:
+                    type: string
+                  url:
+                    type: string
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /audio/{projectId}/{audioFileId}:
+    delete:
+      security:
+        - bearerAuth: []
+      summary: Delete audio file from project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: audioFileId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Audio file deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /collaborators:
+    post:
+      security:
+        - bearerAuth: []
+      summary: Add a collaborator to a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                projectId:
+                  type: string
+      responses:
+        '201':
+          description: Collaborator added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  collaboratorId:
+                    type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+    delete:
+      security:
+        - bearerAuth: []
+      summary: Remove a collaborator from a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                projectId:
+                  type: string
+      responses:
+        '200':
+          description: Collaborator removed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Collaborator not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /comments:
+    post:
+      security:
+        - bearerAuth: []
+      summary: Add a comment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                userId:
+                  type: string
+                projectId:
+                  type: string
+      responses:
+        '201':
+          description: Comment added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commentId:
+                    type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /comments/{fileID}:
+    post:
+      security:
+        - bearerAuth: []
+      summary: Get comments for a file
+      parameters:
+        - name: fileID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Comments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    commentId:
                       type: string
-            responses:
-                "200":
-                    description: Collaborator removed successfully
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "401":
-                    description: Unauthorized
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "400":
-                    description: Bad request
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "404":
-                    description: Collaborator not found
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "500":
-                    description: Internal server error
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-    /projects/{projectId}/comments:
-        get:
-            security:
-                - bearerAuth: []
-            summary: Get all comments for a project
-            parameters:
-                - name: projectId
-                  in: path
-                  required: true
-                  description: ID of the project to retrieve comments for
-                  schema:
+                    text:
                       type: string
-            responses:
-                "200":
-                    description: Comments retrieved successfully
-                    content:
-                        application/json:
-                            schema:
-                                type: array
-                                items:
-                                    type: object
-                                    properties:
-                                        commentId:
-                                            type: string
-                                        text:
-                                            type: string
-                                        userId:
-                                            type: string
-                "404":
-                    description: Project not found
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "401":
-                    description: Unauthorized
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "400":
-                    description: Bad request
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "403":
-                    description: Forbidden
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "500":
-                    description: Internal server error
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-        post:
-            security:
-                - bearerAuth: []
-            summary: Add a comment to a project
-            requestBody:
-                description: Comment object that needs to be added
-                required: true
-                content:
-                    application/json:
-                        schema:
-                            type: object
-                            properties:
-                                text:
-                                    type: string
-                                userId:
-                                    type: string
-                                projectId:
-                                    type: string
-            responses:
-                "201":
-                    description: Comment added successfully
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    commentId:
-                                        type: string
-                "400":
-                    description: Bad request
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "401":
-                    description: Unauthorized
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "403":
-                    description: Forbidden
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "404":
-                    description: Project not found
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "500":
-                    description: Internal server error
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-    /auth/sign-in:
-        post:
-            summary: Login a user
-            requestBody:
-                description: User credentials for login
-                required: true
-                content:
-                    application/json:
-                        schema:
-                            type: object
-                            properties:
-                                email:
-                                    type: string
-                                password:
-                                    type: string
-            responses:
-                "200":
-                    description: Login successful
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    token:
-                                        type: string
-                "401":
-                    description: Unauthorized
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "400":
-                    description: Bad request
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "500":
-                    description: Internal server error
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-    /auth/sign-up:
-        post:
-            summary: Register a new user
-            requestBody:
-                description: User object that needs to be registered
-                required: true
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/User"
-            responses:
-                "201":
-                    description: User registered successfully
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    userId:
-                                        type: string
-                "400":
-                    description: Bad request
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "409":
-                    description: User already exists
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                "500":
-                    description: Internal server error
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
+                    userId:
+                      type: string
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /comments/{commentId}:
+    delete:
+      security:
+        - bearerAuth: []
+      summary: Delete a comment
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Comment deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Comment not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /comments/{fileID}/read:
+    put:
+      security:
+        - bearerAuth: []
+      summary: Update last read timestamp for a file
+      parameters:
+        - name: fileID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Last read timestamp updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /test:
+    get:
+      summary: Test endpoint
+      responses:
+        '200':
+          description: Test successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string

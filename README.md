@@ -1,18 +1,32 @@
-# [Live version](https://vibedrop-backend.cc25.chasacademy.dev/)
-
 # Vibedrop Backend – Användarguide
 
+🔗 **Liveversion:** [https://vibedrop-backend.cc25.chasacademy.dev/](https://vibedrop-backend.cc25.chasacademy.dev/)
+📘 **Swagger (Testa API:t):** [swagger.yml på GitLab](https://git.chasacademy.dev/chas-challenge-2025/vibedrop/backend/-/blob/main/swagger.yml)
+
 Den här guiden hjälper dig att installera, konfigurera och köra backend för Vibedrop. Den täcker även arbetsflöde, miljövariabler och vanliga kommandon.
+
+## Techstack
+- Node.js
+- TypeScript
+- Express.js
+- Prisma ORM
+- PostgreSQL
+- Multer
+- Supabase
+- JWT (JSON Web Tokens) för autentisering
+- ESLint
+- Docker
+- Zod (validering)
 
 ## Innehåll
 - [Förutsättningar](#förutsättningar)
 - [Installation](#installation)
-- [Miljövariabler (.env)](#miljovariabler-env)
+- [Miljövariabler (.env)](#miljövariabler-env)
 - [Utvecklingsläge](#utvecklingsläge)
-- [Bygga och köra i produktion](#bygga-och-kora-i-produktion)
+- [Bygga och köra i produktion](#bygga-och-köra-i-produktion)
 - [Struktur och viktiga mappar](#struktur-och-viktiga-mappar)
-- [Användbara npm-skript](#anvandbara-npm-skript)
-- [Felsökning](#felsokning)
+- [Användbara npm-skript](#användbara-npm-skript)
+- [Felsökning](#felsökning)
 - [Ytterligare dokumentation](#ytterligare-dokumentation)
 
 ## Förutsättningar
@@ -106,4 +120,3 @@ npm start
 
 - [Express.js Docs](https://expressjs.com/)
 - [Prisma Docs](https://www.prisma.io/docs/)
-- [Chas Academy GitLab](https://git.chasacademy.dev/chas-challenge-2025/vibedrop/backend)

@@ -1,6 +1,6 @@
 # Vibedrop Backend – Användarguide
 
-🔗 **Liveversion:** [https://vibedrop-backend.cc25.chasacademy.dev/](https://vibedrop-backend.cc25.chasacademy.dev/)
+🔗 **Liveversion:** [https://vibedrop-backend.cc25.chasacademy.dev/](https://vibedrop-backend.cc25.chasacademy.dev/)  
 📘 **Swagger (Testa API:t):** [swagger.yml på GitLab](https://git.chasacademy.dev/chas-challenge-2025/vibedrop/backend/-/blob/main/swagger.yml)
 
 Den här guiden hjälper dig att installera, konfigurera och köra backend för Vibedrop. Den täcker även arbetsflöde, miljövariabler och vanliga kommandon.

@@ -62,4 +62,5 @@ const server = app.listen(PORT, error => {
 
 app.use("/.netlify/functions/server", router);
 
+export default app;
 export const handler = serverless(app);

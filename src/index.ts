@@ -14,6 +14,7 @@ import commentRouter from "./routes/commentRoutes";
 
 //const PORT = 3000;
 const app = express();
+const router = express.Router();
 const corsOptions = {
     origin: FRONTEND_URL,
     methods: ["GET", "POST", "PUT", "DELETE"],
@@ -32,16 +33,16 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
-app.use("/users", userRouter);
-app.use("/auth", authRouter);
-app.use("/projects", projectRouter);
-app.use("/audio", audioRouter);
-app.use("/collaborators", collaboratorRouter);
-app.use("/comments", commentRouter);
+router.use("/users", userRouter);
+router.use("/auth", authRouter);
+router.use("/projects", projectRouter);
+router.use("/audio", audioRouter);
+router.use("/collaborators", collaboratorRouter);
+router.use("/comments", commentRouter);
 
 app.use("/test", testRouter);
 
-app.get("/", (req, res) => {
+router.get("/", (req, res) => {
     res.status(200).json({
         status: "OK",
         message: `Env: ${process.env.NODE_ENV}`,
@@ -58,5 +59,7 @@ const server = app.listen(PORT, error => {
     console.log(`Server is running on ${JSON.stringify(server.address())}`);
 });
 */
+
+app.use("/.netlify/functions/server", router);
 
 export const handler = serverless(app);

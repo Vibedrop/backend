@@ -1,0 +1,4 @@
+FROM alpine:latest
+RUN apk --no-cache add curl
+RUN apk --no-cache add jq
+RUN apk --no-cache add envsubst

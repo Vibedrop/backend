@@ -1,0 +1,283 @@
+stages:
+  - build
+  - deploy
+  - teardown
+
+#############################################
+# 1) Bygg backend-imagen
+#############################################
+build:
+  image: docker:20
+  stage: build
+  before_script:
+    - docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
+  script:
+    - |
+      # Sätt DOCKER_TAG till "latest" om main, annars använd branch-namnet
+      if [[ $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH ]]; then
+        DOCKER_TAG="latest"
+      else
+        DOCKER_TAG="$CI_COMMIT_REF_NAME"
+      fi
+      echo "Bygger $CI_REGISTRY_IMAGE:$DOCKER_TAG"
+      
+      # Bygg hela Docker-imagen (inte bara base-steget) och pusha till registret
+      docker buildx build \
+        --cache-from="$CI_REGISTRY_IMAGE:latest" \
+        -t "$CI_REGISTRY_IMAGE:$DOCKER_TAG" \
+        --push \
+        .
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+      changes:
+        - Dockerfile
+        - package.json
+        - package-lock.json
+        - tsconfig.json
+        - src/**/*.ts
+        - docker-compose.yml
+        - .gitlab-ci.yml
+        - prisma/schema.prisma
+        - prisma/migrations/**/*
+        - entrypoint.sh
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      changes:
+        - Dockerfile
+        - package.json
+        - package-lock.json
+        - tsconfig.json
+        - src/**/*.ts
+        - docker-compose.yml
+        - .gitlab-ci.yml
+        - prisma/schema.prisma
+        - prisma/migrations/**/*
+        - entrypoint.sh
+
+        
+#############################################
+# 2) Bygg "utils"-imagen
+#############################################
+build-utils:
+  image: docker:20
+  stage: build
+  before_script:
+    - docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
+  script:
+    - |
+      echo "Bygger $CI_REGISTRY_IMAGE/utils:latest"
+      docker buildx build \
+        --cache-from="$CI_REGISTRY_IMAGE/utils:latest" \
+        -t "$CI_REGISTRY_IMAGE/utils:latest" \
+        --push \
+        -f Dockerfile-utils \
+        .
+  rules:
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      changes:
+        - Dockerfile-utils
+
+
+#############################################
+# 3) Deploy-job för Merge Requests (review)
+#############################################
+deploy_review:
+  stage: deploy
+  image: "$CI_REGISTRY_IMAGE/utils:latest"
+  environment:
+    name: "review-$CI_COMMIT_REF_NAME"
+    url: "https://vdbe-${CI_COMMIT_REF_NAME}.cc25.chasacademy.dev"
+    on_stop: stop_review
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+  script:
+    - |
+      set -e
+
+      # Sätt kort stacknamn: vdbe-${branch}
+      export STACK_PREFIX="vdbe"
+      export BRANCH_SLUG=$(echo "$CI_COMMIT_REF_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]-' | cut -c1-30)
+      export STACK_NAME="${STACK_PREFIX}-${BRANCH_SLUG}"
+      export NORMALIZED_STACK_NAME="$STACK_NAME"
+      export CI_ENVIRONMENT_SLUG="$STACK_NAME"
+      export DOCKER_TAG="$CI_COMMIT_REF_NAME"
+
+      export MAX_SERVICE_NAME="${STACK_NAME}_vibedrop-infra-db"
+      if [ ${#MAX_SERVICE_NAME} -gt 63 ]; then
+        echo "Fel: ${#MAX_SERVICE_NAME} tecken långt -- maxgräns 63."
+        echo "Branch-namnet är för långt för att generera en giltig stack."
+        exit 1
+      fi
+
+      echo "STACK_NAME: $STACK_NAME"
+
+      echo "Genererar deploybar docker-compose..."
+      envsubst < docker-compose.yml > deployable-compose.yml
+      cat deployable-compose.yml
+
+      echo "Loggar in i Portainer..."
+      export PORTAINER_TOKEN=$(curl -s -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
+        --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
+        | jq -r '.jwt')
+
+      echo "Hämtar endpoint och swarm info..."
+      export ENDPOINT_ID=$(curl -sSL \
+        -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        https://portainer.cc25.chasacademy.dev/api/endpoints \
+        | jq -r '.[] | select(.Name == "primary") | .Id')
+
+      export SWARM_ID=$(curl -sSL \
+        -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        https://portainer.cc25.chasacademy.dev/api/endpoints \
+        | jq -r '.[] | select(.Name == "primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
+
+      STACK_ID=$(curl -sSL \
+        -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        https://portainer.cc25.chasacademy.dev/api/stacks \
+        | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
+
+      if [ -z "$STACK_ID" ]; then
+        echo "Skapar ny stack $NORMALIZED_STACK_NAME"
+        curl -X POST \
+          "https://portainer.cc25.chasacademy.dev/api/stacks/create/swarm/file?endpointId=$ENDPOINT_ID" \
+          -H "Authorization: Bearer $PORTAINER_TOKEN" \
+          -F Name="$NORMALIZED_STACK_NAME" \
+          -F SwarmID="$SWARM_ID" \
+          -F file=@deployable-compose.yml \
+          | jq
+      else
+        echo "Uppdaterar existerande stack $STACK_ID ($NORMALIZED_STACK_NAME)"
+        COMPOSE_CONTENTS=$(cat deployable-compose.yml)
+        JSON_PAYLOAD=$(jq -n --arg compose "$COMPOSE_CONTENTS" \
+          '{"prune": true, "pullImage": true, "stackFileContent": $compose}')
+        curl -X PUT \
+          "https://portainer.cc25.chasacademy.dev/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
+          -H "Authorization: Bearer $PORTAINER_TOKEN" \
+          --json "$JSON_PAYLOAD" \
+          | jq
+      fi
+
+
+
+#############################################
+# 4) Deploy-job för main (production)
+#############################################
+deploy_main:
+  stage: deploy
+  image: "$CI_REGISTRY_IMAGE/utils:latest"
+  environment:
+    name: "production"
+    url: "https://vibedrop-backend.cc25.chasacademy.dev"
+  rules:
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+  script:
+    - |
+      set -e
+
+      export STACK_NAME="vibedrop-backend"
+      export NORMALIZED_STACK_NAME="$STACK_NAME"
+      export CI_ENVIRONMENT_SLUG="$STACK_NAME"
+      export DOCKER_TAG="latest"
+
+      echo "STACK: $STACK_NAME"
+
+      echo "Genererar docker-compose med envsubst..."
+      envsubst < docker-compose.yml > deployable-compose.yml
+      cat deployable-compose.yml
+
+      export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
+        --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
+        | jq -r '.jwt')
+
+      export ENDPOINT_ID=$(curl -sSL \
+        -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        https://portainer.cc25.chasacademy.dev/api/endpoints \
+        | jq -r '.[] | select(.Name == "primary") | .Id')
+
+      export SWARM_ID=$(curl -sSL \
+        -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        https://portainer.cc25.chasacademy.dev/api/endpoints \
+        | jq -r '.[] | select(.Name == "primary") | .Snapshots[0].DockerSnapshotRaw.Info.Swarm.Cluster.ID')
+
+      STACK_ID=$(curl -sSL \
+        -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        https://portainer.cc25.chasacademy.dev/api/stacks \
+        | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
+
+      if [ -z "$STACK_ID" ]; then
+        echo "Skapar stack $NORMALIZED_STACK_NAME"
+        curl -X POST \
+          "https://portainer.cc25.chasacademy.dev/api/stacks/create/swarm/file?endpointId=$ENDPOINT_ID" \
+          -H "Authorization: Bearer $PORTAINER_TOKEN" \
+          -F Name="$NORMALIZED_STACK_NAME" \
+          -F SwarmID="$SWARM_ID" \
+          -F file=@deployable-compose.yml \
+          | jq
+      else
+        echo "Uppdaterar stack $STACK_ID ($NORMALIZED_STACK_NAME)"
+        COMPOSE_CONTENTS=$(cat deployable-compose.yml)
+        JSON_PAYLOAD=$(jq -n --arg compose "$COMPOSE_CONTENTS" \
+          '{"prune": true, "pullImage": true, "stackFileContent": $compose}')
+        curl -X PUT \
+          "https://portainer.cc25.chasacademy.dev/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
+          -H "Authorization: Bearer $PORTAINER_TOKEN" \
+          --json "$JSON_PAYLOAD" \
+          | jq
+      fi
+
+
+#############################################
+# 5) Teardown-job för att stoppa review
+#############################################
+stop_review:
+  stage: teardown
+  image: "$CI_REGISTRY_IMAGE/utils:latest"
+  environment:
+    name: "review-$CI_COMMIT_REF_NAME"
+    action: stop
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+      when: manual
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_STATE == "merged"'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_STATE == "closed"'
+      when: always
+  script:
+    - |
+      set -e
+      export STACK_PREFIX="vdbe"
+      export BRANCH_SLUG=$(echo "$CI_COMMIT_REF_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]-' | cut -c1-30)
+      export STACK_NAME="${STACK_PREFIX}-${BRANCH_SLUG}"
+      export NORMALIZED_STACK_NAME="$STACK_NAME"
+
+      export PORTAINER_TOKEN=$(curl -X POST "https://portainer.cc25.chasacademy.dev/api/auth" \
+        --json '{"username": "'$PORTAINER_USER'", "password": "'$PORTAINER_PASSWORD'"}' \
+        | jq -r '.jwt')
+
+      export ENDPOINT_ID=$(curl -sSL \
+        -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        https://portainer.cc25.chasacademy.dev/api/endpoints \
+        | jq -r '.[] | select(.Name == "primary") | .Id')
+
+      echo "Kollar om stack $NORMALIZED_STACK_NAME finns..."
+      STACK_ID=$(curl -sSL \
+        -H "Authorization: Bearer $PORTAINER_TOKEN" \
+        https://portainer.cc25.chasacademy.dev/api/stacks \
+        | jq -r --arg NAME "$NORMALIZED_STACK_NAME" '.[] | select(.Name == $NAME) | .Id')
+
+      if [ -z "$STACK_ID" ]; then
+        echo "Stack $NORMALIZED_STACK_NAME hittades inte!"
+        exit 1
+      else 
+        echo "Tar bort stack $STACK_ID ($NORMALIZED_STACK_NAME)"
+        response=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+          "https://portainer.cc25.chasacademy.dev/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
+          -H "Authorization: Bearer $PORTAINER_TOKEN")
+        if [ "$response" -eq 204 ]; then
+          echo "Stack $STACK_ID raderades framgångsrikt."
+        else
+          echo "Misslyckades med att ta bort stack $STACK_ID. HTTP-statuskod: $response"
+          exit 1
+        fi
+      fi
+
+

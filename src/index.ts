@@ -1,6 +1,7 @@
 import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import serverless from "serverless-http";
 
 import { FRONTEND_URL } from "./utilities/config";
 import userRouter from "./routes/userRoutes";
@@ -11,7 +12,7 @@ import audioRouter from "./routes/audioRoutes";
 import collaboratorRouter from "./routes/collaboratorRoutes";
 import commentRouter from "./routes/commentRoutes";
 
-const PORT = 3000;
+//const PORT = 3000;
 const app = express();
 const corsOptions = {
     origin: FRONTEND_URL,
@@ -48,6 +49,7 @@ app.get("/", (req, res) => {
 });
 
 // Handle 404
+/*
 const server = app.listen(PORT, error => {
     if (error) {
         console.log(Error);
@@ -55,3 +57,6 @@ const server = app.listen(PORT, error => {
 
     console.log(`Server is running on ${JSON.stringify(server.address())}`);
 });
+*/
+
+export const handler = serverless(app);

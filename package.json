@@ -47,6 +47,7 @@
         "music-metadata": "^7.14.0",
         "nanoid": "3.3.4",
         "nodemon": "^3.1.10",
+        "serverless-http": "^3.2.0",
         "zod": "^3.25.76"
     }
 }

@@ -11,7 +11,7 @@ import audioRouter from "./routes/audioRoutes";
 import collaboratorRouter from "./routes/collaboratorRoutes";
 import commentRouter from "./routes/commentRoutes";
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const app = express();
 const corsOptions = {
     origin: FRONTEND_URL,
@@ -48,10 +48,14 @@ app.get("/", (req, res) => {
 });
 
 // Handle 404
-const server = app.listen(PORT, error => {
-    if (error) {
-        console.log(Error);
-    }
+app.use((req, res) => {
+    res.status(404).json({
+        status: "error",
+        message: "Route not found",
+    });
+});
 
-    console.log(`Server is running on ${JSON.stringify(server.address())}`);
+// Start server
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);
 });

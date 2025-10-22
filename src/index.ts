@@ -13,24 +13,23 @@ import commentRouter from "./routes/commentRoutes";
 
 const PORT = process.env.PORT || 3000;
 const app = express();
-const corsOptions = {
-    origin: FRONTEND_URL,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true, // Required for Cookies
-    optionsSuccessStatus: 200,
-};
 
-app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Credentials", "true");
-    next();
-});
+// CORS middleware
+app.use(
+    cors({
+        origin: FRONTEND_URL,           // frontend URL för prod/dev
+        credentials: true,              // krävs för httponly-cookie
+        methods: ["GET", "POST", "PUT", "DELETE"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+        optionsSuccessStatus: 200,
+    })
+);
 
-// Middleware
-app.use(cors(corsOptions));
+// JSON och cookie-parser middleware
 app.use(express.json());
 app.use(cookieParser());
 
+// Routes
 app.use("/users", userRouter);
 app.use("/auth", authRouter);
 app.use("/projects", projectRouter);
@@ -40,6 +39,7 @@ app.use("/comments", commentRouter);
 
 app.use("/test", testRouter);
 
+// Healthcheck / root
 app.get("/", (req, res) => {
     res.status(200).json({
         status: "OK",

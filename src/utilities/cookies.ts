@@ -13,6 +13,7 @@ const cookieOptions = {
     secure: process.env.NODE_ENV === "production" ? true : false,
     httpOnly: true,
     path: "/",
+    partitioned: true, // Required in Chrome to allow third-party cookies (new)
 };
 
 export const setAuthCookie = (res: Response, token: string) => {
